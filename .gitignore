@@ -1,0 +1,19 @@
+# Build output
+dist/
+
+# Dependencies
+node_modules/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Test / coverage output
+coverage/
+.nyc_output/
+
+# Editor & OS noise
+.DS_Store
+Thumbs.db
+.vscode/
+*.suo
+*.user

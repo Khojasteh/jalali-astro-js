@@ -1,0 +1,42 @@
+{
+  "name": "jalali-astro",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Astronomical Gregorian and Jalali date conversion based on the Iranian calendar's equinox rule.",
+  "author": "Kambiz Khojasteh",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khojasteh/jalali-astro.git"
+  },
+  "bugs": {
+    "url": "https://github.com/khojasteh/jalali-astro/issues"
+  },
+  "homepage": "https://github.com/khojasteh/jalali-astro#readme",
+  "scripts": {
+    "build": "tsup",
+    "test": "node --import tsx/esm --test test/*.test.ts",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.17",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

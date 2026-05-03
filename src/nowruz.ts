@@ -1,0 +1,82 @@
+/**
+ * Nowruz (Iranian New Year) calculation.
+ *
+ * Nowruz falls on the day of the vernal equinox as observed in Tehran (UTC+3:30).
+ * The official rule: if the equinox moment occurs **before** Tehran noon, Nowruz is that
+ * civil day; if it occurs **at or after** noon, Nowruz is the following civil day.
+ */
+
+import { vernalEquinoxJD, MEEUS_MIN_YEAR, MEEUS_MAX_YEAR } from './astronomy.js';
+
+/**
+ * The mapping from Jalali year to its Gregorian year equivalent.
+ * Jalali year 1 corresponds to 622 CE (Gregorian), so: gregorianYear = jalaliYear + 621.
+ *
+ * The Meeus algorithm uses the proleptic Gregorian calendar with no year 0,
+ * so no extra correction is needed — the caller just adds 621.
+ */
+export const JALALI_TO_GREGORIAN_OFFSET = 621;
+
+/**
+ * Iran Standard Time offset from UTC in fractional days (+03:30).
+ */
+const IRAN_UTC_OFFSET_DAYS = 3.5 / 24;
+
+/**
+ * Cache: Jalali year → Nowruz Julian Day Number.
+ */
+const nowruzCache = new Map<number, number>();
+
+/**
+ * Returns the Julian Day Number (integer) of Nowruz for the given Jalali year.
+ *
+ * The JDN is computed from the astronomical vernal equinox and Iran Standard Time.
+ * Results are memoised.
+ *
+ * @param jalaliYear - Jalali year.
+ * @returns The JDN of 1 Farvardin (Nowruz) for `jalaliYear`.
+ * @throws {RangeError} If the year is outside the supported range or is 0.
+ */
+export function nowruzJDN(jalaliYear: number): number {
+    if (jalaliYear === 0) {
+        throw new RangeError('Year 0 does not exist in the Jalali calendar.');
+    }
+    const gregorianYear = jalaliYear + JALALI_TO_GREGORIAN_OFFSET;
+    if (gregorianYear < MEEUS_MIN_YEAR || gregorianYear > MEEUS_MAX_YEAR) {
+        throw new RangeError(
+            `Jalali year ${jalaliYear} is out of range. Supported range: ` +
+            `${MEEUS_MIN_YEAR - JALALI_TO_GREGORIAN_OFFSET}–${MEEUS_MAX_YEAR - JALALI_TO_GREGORIAN_OFFSET}.`
+        );
+    }
+
+    const cached = nowruzCache.get(jalaliYear);
+    if (cached !== undefined) return cached;
+
+    // Equinox Julian Day in Universal Time (noon-based)
+    const equinoxJD_UT = vernalEquinoxJD(gregorianYear);
+
+    // Shift to Tehran civil time (still noon-based)
+    const equinoxJD_Tehran = equinoxJD_UT + IRAN_UTC_OFFSET_DAYS;
+
+    // Shift noon-based JD to midnight-based to get the civil day boundary
+    const midnightJD = equinoxJD_Tehran + 0.5;
+
+    // Integer part = civil day number; fractional part = time within that day (0=midnight, 0.5=noon)
+    const civilDay = Math.trunc(midnightJD);
+    const fractionOfDay = midnightJD - civilDay;
+
+    // Nowruz rule: before noon → same day; noon or after → next day
+    const jdn = fractionOfDay < 0.5 ? civilDay : civilDay + 1;
+
+    nowruzCache.set(jalaliYear, jdn);
+    return jdn;
+}
+
+/**
+ * Clears the Nowruz JDN cache.
+ *
+ * @returns void
+ */
+export function clearNowruzCache(): void {
+    nowruzCache.clear();
+}
