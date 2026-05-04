@@ -6,7 +6,7 @@
  */
 
 const ASCII_ZERO = '0'.charCodeAt(0);
-const PERSIAN_ZERO = '۰'.charCodeAt(0);
+const PERSIAN_ZERO = '\u06F0'.charCodeAt(0);
 
 /**
  * Utility class for formatting and parsing Persian integer numbers.
@@ -57,7 +57,7 @@ export class PersianNumbers {
         let negative = false;
 
         const first = input[0];
-        if (first === '-' || first === '−') {
+        if (first === '-' || first === '\u2212') {
             negative = true;
             index = 1;
         } else if (first === '+') {

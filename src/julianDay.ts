@@ -84,3 +84,16 @@ export function gregorianDaysInMonth(year: number, month: number): number {
 export function gregorianIsLeapYear(year: number): boolean {
     return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 }
+
+/**
+ * Returns the day of week for a given Julian Day Number.
+ *
+ * The value follows the JavaScript `Date` convention:
+ * 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday.
+ *
+ * @param jdn - Julian Day Number (integer).
+ * @returns Day of week (0 = Sunday … 6 = Saturday).
+ */
+export function dayOfWeekFromJDN(jdn: number): number {
+    return (jdn + 1) % 7;
+}

@@ -38,6 +38,9 @@ const nowruzCache = new Map<number, number>();
  * @throws {RangeError} If the year is outside the supported range or is 0.
  */
 export function nowruzJDN(jalaliYear: number): number {
+    const cached = nowruzCache.get(jalaliYear);
+    if (cached !== undefined) return cached;
+
     if (jalaliYear === 0) {
         throw new RangeError('Year 0 does not exist in the Jalali calendar.');
     }
@@ -48,9 +51,6 @@ export function nowruzJDN(jalaliYear: number): number {
             `${MEEUS_MIN_YEAR - JALALI_TO_GREGORIAN_OFFSET}–${MEEUS_MAX_YEAR - JALALI_TO_GREGORIAN_OFFSET}.`
         );
     }
-
-    const cached = nowruzCache.get(jalaliYear);
-    if (cached !== undefined) return cached;
 
     // Equinox Julian Day in Universal Time (noon-based)
     const equinoxJD_UT = vernalEquinoxJD(gregorianYear);

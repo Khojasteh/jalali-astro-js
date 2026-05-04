@@ -11,7 +11,7 @@
  */
 
 import { vernalEquinoxJD, MEEUS_MIN_YEAR, MEEUS_MAX_YEAR } from './astronomy.js';
-import { gregorianToJDN, gregorianFromJDN, gregorianDaysInMonth } from './julianDay.js';
+import { gregorianToJDN, gregorianFromJDN, gregorianDaysInMonth, dayOfWeekFromJDN } from './julianDay.js';
 import { nowruzJDN, JALALI_TO_GREGORIAN_OFFSET } from './nowruz.js';
 import { PersianNumbers } from './persianNumbers.js';
 
@@ -69,15 +69,20 @@ const patternCache = new Map<string, CompiledPattern>();
  * Compiles a date format pattern into a regular expression and capture group metadata.
  * Results are cached for performance.
  *
+ * Bidirectional control characters (RLM, LRM, etc.) are automatically stripped from the
+ * pattern before compilation, and leading/trailing whitespace is trimmed to ensure
+ * consistent parsing behavior.
+ *
  * @param pattern - The date format pattern string.
  * @returns An object containing the compiled regex and capture group information.
  */
 function compilePattern(pattern: string): CompiledPattern {
-    // Check cache first
-    const cached = patternCache.get(pattern);
-    if (cached) {
-        return cached;
-    }
+    // Strip bidirectional control characters and trim whitespace from the pattern
+    const cleanPattern = pattern.replace(/[\u200E\u200F\u061C\u202A-\u202E]/g, '').trim();
+
+    // Check cache first (using cleaned pattern)
+    const cached = patternCache.get(cleanPattern);
+    if (cached) return cached;
 
     // Helper to escape regex special characters in literal text
     const escapeRegex = function (text: string): string {
@@ -92,13 +97,13 @@ function compilePattern(pattern: string): CompiledPattern {
     let lastIndex = 0;
 
     // Iterate over all format tokens in the pattern
-    for (const match of pattern.matchAll(FORMAT_TOKENS)) {
+    for (const match of cleanPattern.matchAll(FORMAT_TOKENS)) {
         const token = match[0];
         const tokenIndex = match.index!;
 
         // Add any literal text before this token
         if (tokenIndex > lastIndex) {
-            const literal = pattern.slice(lastIndex, tokenIndex);
+            const literal = cleanPattern.slice(lastIndex, tokenIndex);
             regexPattern += escapeRegex(literal);
         }
         lastIndex = tokenIndex + token.length;
@@ -140,8 +145,8 @@ function compilePattern(pattern: string): CompiledPattern {
     }
 
     // Add any remaining literal text after the last token
-    if (lastIndex < pattern.length) {
-        const literal = pattern.slice(lastIndex);
+    if (lastIndex < cleanPattern.length) {
+        const literal = cleanPattern.slice(lastIndex);
         regexPattern += escapeRegex(literal);
     }
 
@@ -152,7 +157,7 @@ function compilePattern(pattern: string): CompiledPattern {
     };
 
     // Cache and return the result
-    patternCache.set(pattern, compiled);
+    patternCache.set(cleanPattern, compiled);
     return compiled;
 }
 
@@ -357,6 +362,110 @@ export class JalaliDate {
     }
 
     /**
+     * Creates a JalaliDate from a year, week number, and day of week.
+     *
+     * Week 1 is the week containing 1 Farvardin. Weeks start on Saturday (6) and end on Friday (5).
+     *
+     * @param year - Jalali year.
+     * @param weekNumber - Week number (1-based, typically 1-52 or 1-53).
+     * @param dayOfWeek - Day of week (0 = Sunday, …, 6 = Saturday).
+     * @returns The corresponding `JalaliDate` for the given week and day.
+     * @throws {RangeError} If the parameters are out of range or the resulting date is invalid.
+     */
+    static fromWeekOfYear(year: number, weekNumber: number, dayOfWeek: number): JalaliDate {
+        JalaliDate.assertYearInRange(year);
+        if (weekNumber < 1 || weekNumber > 53) {
+            throw new RangeError(`Week number ${weekNumber} is out of range. Valid range: 1-53.`);
+        }
+        if (dayOfWeek < 0 || dayOfWeek > 6) {
+            throw new RangeError(`Day of week ${dayOfWeek} is out of range. Valid range: 0-6.`);
+        }
+
+        // Get JDN of 1 Farvardin and find the Saturday of that week
+        const firstDayJDN = nowruzJDN(year);
+        const firstDayOfWeek = dayOfWeekFromJDN(firstDayJDN);
+        const daysFromSaturday = (firstDayOfWeek - 6 + 7) % 7;
+        const firstSaturday = firstDayJDN - daysFromSaturday;
+
+        // Calculate the target date
+        const daysOffset = (weekNumber - 1) * 7 + (dayOfWeek - 6 + 7) % 7;
+        const targetJDN = firstSaturday + daysOffset;
+
+        // Verify the resulting date is reasonable:
+        // - Week 1 can extend into the previous year
+        // - Week 52/53 can extend into the next year
+        const nextYear = year === -1 ? 1 : year + 1;
+        const lastDayJDN = nowruzJDN(nextYear) - 1;
+        const lastDayOfWeek = dayOfWeekFromJDN(lastDayJDN);
+        const daysToFriday = (5 - lastDayOfWeek + 7) % 7;
+        const lastFriday = lastDayJDN + daysToFriday;
+
+        if (targetJDN < firstSaturday || targetJDN > lastFriday) {
+            throw new RangeError(
+                `Week ${weekNumber}, day ${dayOfWeek} of year ${year} is out of range.`
+            );
+        }
+
+        return JalaliDate.fromJDN(targetJDN);
+    }
+
+    /**
+     * Creates a JalaliDate for the nth occurrence of a weekday within a specific month.
+     *
+     * Positive `nth` values count from the beginning of the month (1 = first occurrence, 2 = second, etc.).
+     * Negative `nth` values count from the end of the month (-1 = last occurrence, -2 = second-to-last, etc.).
+     *
+     * @param year - Jalali year.
+     * @param month - Month (1 = Farvardin … 12 = Esfand).
+     * @param nth - Occurrence number. Positive for counting from start (1 = first, 2 = second, etc.),
+     *              negative for counting from end (-1 = last, -2 = second-to-last, etc.). Cannot be 0.
+     * @param dayOfWeek - Day of week (0 = Sunday, …, 6 = Saturday).
+     * @returns The corresponding `JalaliDate` for the nth occurrence of the weekday in the month.
+     * @throws {RangeError} If the parameters are out of range or the nth occurrence doesn't exist in the month.
+     */
+    static fromNthWeekdayOfMonth(year: number, month: number, nth: number, dayOfWeek: number): JalaliDate {
+        JalaliDate.assertYearInRange(year);
+        JalaliDate.assertMonthInRange(month);
+
+        if (nth === 0) {
+            throw new RangeError('nth cannot be 0. Use positive numbers (1, 2, 3, ...) or negative numbers (-1, -2, -3, ...).');
+        }
+        if (dayOfWeek < 0 || dayOfWeek > 6) {
+            throw new RangeError(`Day of week ${dayOfWeek} is out of range. Valid range: 0-6.`);
+        }
+
+        const daysInMonth = JalaliDate.daysInMonth(year, month);
+        const firstDayJDN = nowruzJDN(year) + JalaliDate.daysToMonth(month);
+
+        let targetDay: number;
+
+        if (nth > 0) {
+            const firstDayOfWeek = dayOfWeekFromJDN(firstDayJDN);
+            const daysToFirstOccurrence = (dayOfWeek - firstDayOfWeek + 7) % 7;
+            targetDay = 1 + daysToFirstOccurrence + (nth - 1) * 7;
+
+            if (targetDay > daysInMonth) {
+                throw new RangeError(
+                    `Occurrence ${nth} of day-of-week ${dayOfWeek} does not exist in month ${month} of year ${year}.`
+                );
+            }
+        } else {
+            const lastDayJDN = firstDayJDN + daysInMonth - 1;
+            const lastDayOfWeek = dayOfWeekFromJDN(lastDayJDN);
+            const daysToLastOccurrence = (lastDayOfWeek - dayOfWeek + 7) % 7;
+            targetDay = daysInMonth - daysToLastOccurrence - (Math.abs(nth) - 1) * 7;
+
+            if (targetDay < 1) {
+                throw new RangeError(
+                    `Occurrence ${Math.abs(nth)} from the end of day-of-week ${dayOfWeek} does not exist in month ${month} of year ${year}.`
+                );
+            }
+        }
+
+        return new JalaliDate(year, month, targetDay);
+    }
+
+    /**
      * Creates a JalaliDate from a Gregorian date.
      *
      * @param gYear  - Proleptic Gregorian year.
@@ -420,6 +529,8 @@ export class JalaliDate {
      *
      * Quoted text in single or double quotes must match verbatim (without the quotes).
      * Persian-Indic digits are accepted alongside Latin digits.
+     * Bidirectional control characters (RLM, LRM, etc.) are automatically stripped from both
+     * the input string and pattern, and leading/trailing whitespace is trimmed before parsing.
      *
      * @param str     - The input string.
      * @param pattern - Format pattern. Defaults to `'YYYY/M/D'`.
@@ -428,9 +539,11 @@ export class JalaliDate {
      * @throws {RangeError} If the resulting date is out of range.
      */
     static parse(str: string, pattern = 'YYYY/M/D'): JalaliDate {
+        const cleanStr = str.replace(/[\u200E\u200F\u061C\u202A-\u202E]/g, '').trim();
+
         const { regex, captureGroups } = compilePattern(pattern);
 
-        const match = str.match(regex);
+        const match = cleanStr.match(regex);
         if (!match) {
             throw new Error(`Failed to parse "${str}" with pattern "${pattern}".`);
         }
@@ -479,6 +592,30 @@ export class JalaliDate {
     // ---------------------------------------------------------------------------
     // Static utilities
     // ---------------------------------------------------------------------------
+
+    /**
+     * Returns `true` if the given year, month, and day form a valid Jalali date.
+     *
+     * Unlike the constructor, this method does not throw an error for invalid dates.
+     *
+     * @param year - Jalali year.
+     * @param month - Month (1-12).
+     * @param day - Day of month (1-based).
+     * @returns `true` if the date is valid, `false` otherwise.
+     */
+    static isValidDate(year: number, month: number, day: number): boolean {
+        try {
+            if (year === 0) return false;
+            if (year < JalaliDate.MIN_YEAR || year > JalaliDate.MAX_YEAR) return false;
+            if (month < 1 || month > 12) return false;
+            if (day < 1) return false;
+            const maxDay = JalaliDate.daysInMonth(year, month);
+            if (day > maxDay) return false;
+            return true;
+        } catch {
+            return false;
+        }
+    }
 
     /**
      * Returns `true` when the given Jalali year is a leap year.
@@ -538,6 +675,18 @@ export class JalaliDate {
         return new Date((equinoxJD - UNIX_EPOCH_JD) * 86400 * 1000);
     }
 
+    /**
+     * Calculates the age in complete years from a birth date to a reference date.
+     *
+     * @param birthDate - The birth date.
+     * @param referenceDate - The reference date for age calculation. Defaults to today.
+     * @returns The age in complete years.
+     */
+    static age(birthDate: JalaliDate, referenceDate?: JalaliDate): number {
+        const ref = referenceDate ?? JalaliDate.today();
+        return birthDate.differenceInYears(ref);
+    }
+
     // ---------------------------------------------------------------------------
     // Computed properties
     // ---------------------------------------------------------------------------
@@ -546,14 +695,42 @@ export class JalaliDate {
      * Julian Day Number for this date.
      */
     get jdn(): number {
-        return nowruzJDN(this.year) + JalaliDate.daysToMonth(this.month) + (this.day - 1);
+        return nowruzJDN(this.year) + this.dayOfYear - 1;
+    }
+
+    /**
+     * Week number of the year (1-based).
+     *
+     * Week 1 is the week containing 1 Farvardin. Weeks start on Saturday.
+     * A year typically has 52 or 53 weeks.
+     */
+    get weekOfYear(): number {
+        const firstDayJDN = nowruzJDN(this.year);
+        const firstDayOfWeek = dayOfWeekFromJDN(firstDayJDN);
+        const daysFromSaturday = (firstDayOfWeek - 6 + 7) % 7;
+        const daysSinceFirstSaturday = this.dayOfYear - 1 + daysFromSaturday;
+        return Math.floor(daysSinceFirstSaturday / 7) + 1;
+    }
+
+    /**
+     * Week number of the month (1-based).
+     *
+     * Week 1 is the week containing the 1st day of the month. Weeks start on Saturday.
+     * A month typically has 4, 5, or 6 weeks.
+     */
+    get weekOfMonth(): number {
+        const firstDayJDN = nowruzJDN(this.year) + JalaliDate.daysToMonth(this.month);
+        const firstDayOfWeek = dayOfWeekFromJDN(firstDayJDN);
+        const daysFromSaturday = (firstDayOfWeek - 6 + 7) % 7;
+        const daysSinceFirstSaturday = this.day - 1 + daysFromSaturday;
+        return Math.floor(daysSinceFirstSaturday / 7) + 1;
     }
 
     /**
      * Day of the year (1-based, 1 = 1 Farvardin).
      */
     get dayOfYear(): number {
-        return this.jdn - nowruzJDN(this.year) + 1;
+        return JalaliDate.daysToMonth(this.month) + this.day;
     }
 
     /**
@@ -563,7 +740,7 @@ export class JalaliDate {
      * 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday.
      */
     get dayOfWeek(): number {
-        return (this.jdn + 1) % 7;
+        return dayOfWeekFromJDN(this.jdn);
     }
 
     /**
@@ -585,6 +762,37 @@ export class JalaliDate {
      */
     get daysInYear(): number {
         return JalaliDate.daysInYear(this.year);
+    }
+
+    /**
+     * Persian name of the month.
+     *
+     * @returns The Persian name of the month (e.g., 'فروردین', 'اردیبهشت', etc.).
+     */
+    get monthName(): string {
+        return MONTH_NAMES_FA[this.month - 1]!;
+    }
+
+    /**
+     * Persian name of the day of week.
+     *
+     * @returns The Persian name of the day (e.g., 'شنبه', 'یکشنبه', etc.).
+     */
+    get dayOfWeekName(): string {
+        return DOW_NAMES_FA[this.dayOfWeek]!;
+    }
+
+    /**
+     * Quarter of the year (1-4).
+     *
+     * The quarters are defined as follows:
+     * - Bahar (1): Farvardin, Ordibehesht, Khordad
+     * - Tabestan (2): Tir, Mordad, Shahrivar
+     * - Paeez (3): Mehr, Aban, Azar
+     * - Zemestan (4): Dey, Bahman, Esfand
+     */
+    get quarter(): number {
+        return Math.ceil(this.month / 3);
     }
 
     // ---------------------------------------------------------------------------
@@ -658,6 +866,140 @@ export class JalaliDate {
     }
 
     // ---------------------------------------------------------------------------
+    // Derived dates
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Returns the first day of this date's year (1 Farvardin).
+     *
+     * @returns A new `JalaliDate` representing 1 Farvardin of this year.
+     */
+    startOfYear(): JalaliDate {
+        return new JalaliDate(this.year, 1, 1);
+    }
+
+    /**
+     * Returns the last day of this date's year (29 or 30 Esfand).
+     *
+     * @returns A new `JalaliDate` representing the last day of this year.
+     */
+    endOfYear(): JalaliDate {
+        const lastDay = this.isLeapYear ? 30 : 29;
+        return new JalaliDate(this.year, 12, lastDay);
+    }
+
+    /**
+     * Returns the first day of this date's month.
+     *
+     * @returns A new `JalaliDate` representing the 1st day of this month.
+     */
+    startOfMonth(): JalaliDate {
+        return new JalaliDate(this.year, this.month, 1);
+    }
+
+    /**
+     * Returns the last day of this date's month.
+     *
+     * @returns A new `JalaliDate` representing the last day of this month.
+     */
+    endOfMonth(): JalaliDate {
+        return new JalaliDate(this.year, this.month, this.daysInMonth);
+    }
+
+    /**
+     * Returns the first day of the week containing this date.
+     *
+     * Weeks start on Saturday (the traditional first day of the week in Iran).
+     *
+     * @returns A new `JalaliDate` representing the start of the week (Saturday).
+     * @throws {RangeError} If the resulting date is outside the supported range.
+     */
+    startOfWeek(): JalaliDate {
+        const daysFromSaturday = (this.dayOfWeek - 6 + 7) % 7;
+        return this.addDays(-daysFromSaturday);
+    }
+
+    /**
+     * Returns the last day of the week containing this date.
+     *
+     * Weeks end on Friday (the traditional last day of the week in Iran).
+     *
+     * @returns A new `JalaliDate` representing the end of the week (Friday).
+     * @throws {RangeError} If the resulting date is outside the supported range.
+     */
+    endOfWeek(): JalaliDate {
+        const daysFromSaturday = (this.dayOfWeek - 6 + 7) % 7;
+        const daysToFriday = 6 - daysFromSaturday;
+        return this.addDays(daysToFriday);
+    }
+
+    /**
+     * Returns the first day of this date's quarter.
+     *
+     * @returns A new `JalaliDate` representing the first day of the quarter.
+     */
+    startOfQuarter(): JalaliDate {
+        const firstMonthOfQuarter = (this.quarter - 1) * 3 + 1;
+        return new JalaliDate(this.year, firstMonthOfQuarter, 1);
+    }
+
+    /**
+     * Returns the last day of this date's quarter.
+     *
+     * @returns A new `JalaliDate` representing the last day of the quarter.
+     */
+    endOfQuarter(): JalaliDate {
+        const lastMonthOfQuarter = this.quarter * 3;
+        const lastDay = JalaliDate.daysInMonth(this.year, lastMonthOfQuarter);
+        return new JalaliDate(this.year, lastMonthOfQuarter, lastDay);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Immutability helpers
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Returns a new JalaliDate with the specified year.
+     *
+     * If this is a leap day (Esfand 30) and the new year is not a leap year,
+     * the day is clamped to Esfand 29.
+     *
+     * @param year - The year to set.
+     * @returns A new `JalaliDate` with the year changed.
+     * @throws {RangeError} If the year is outside the supported range.
+     */
+    withYear(year: number): JalaliDate {
+        const maxDay = JalaliDate.daysInMonth(year, this.month);
+        return new JalaliDate(year, this.month, Math.min(this.day, maxDay));
+    }
+
+    /**
+     * Returns a new JalaliDate with the specified month.
+     *
+     * If the current day exceeds the number of days in the new month,
+     * the day is clamped to the last day of the new month.
+     *
+     * @param month - The month to set (1-12).
+     * @returns A new `JalaliDate` with the month changed.
+     * @throws {RangeError} If the month is outside the valid range.
+     */
+    withMonth(month: number): JalaliDate {
+        const maxDay = JalaliDate.daysInMonth(this.year, month);
+        return new JalaliDate(this.year, month, Math.min(this.day, maxDay));
+    }
+
+    /**
+     * Returns a new JalaliDate with the specified day.
+     *
+     * @param day - The day to set (1-based).
+     * @returns A new `JalaliDate` with the day changed.
+     * @throws {RangeError} If the day is outside the valid range for this month.
+     */
+    withDay(day: number): JalaliDate {
+        return new JalaliDate(this.year, this.month, day);
+    }
+
+    // ---------------------------------------------------------------------------
     // Comparison
     // ---------------------------------------------------------------------------
 
@@ -702,6 +1044,83 @@ export class JalaliDate {
         return this.jdn > other.jdn;
     }
 
+    /**
+     * Returns true if this date is between `start` and `end` (inclusive).
+     *
+     * @param start - The start date of the range.
+     * @param end - The end date of the range.
+     * @returns `true` if this date is between start and end (inclusive).
+     */
+    isBetween(start: JalaliDate, end: JalaliDate): boolean {
+        return this.jdn >= start.jdn && this.jdn <= end.jdn;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Date differences
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Returns the number of days between this date and another date.
+     *
+     * @param other - The date to compare against.
+     * @returns The number of days from this date to `other` (negative if `other` is earlier).
+     */
+    differenceInDays(other: JalaliDate): number {
+        return other.jdn - this.jdn;
+    }
+
+    /**
+     * Returns the approximate number of months between this date and another date.
+     *
+     * The calculation accounts for the year 0 gap and uses approximate month counting.
+     * For exact day differences, use {@link differenceInDays}.
+     *
+     * @param other - The date to compare against.
+     * @returns The approximate number of months from this date to `other` (negative if `other` is earlier).
+     */
+    differenceInMonths(other: JalaliDate): number {
+        // Convert to continuous year numbering to handle year 0 gap
+        const thisContinuousYear = this.year <= 0 ? this.year + 1 : this.year;
+        const otherContinuousYear = other.year <= 0 ? other.year + 1 : other.year;
+
+        const thisMonths = (thisContinuousYear - 1) * 12 + this.month;
+        const otherMonths = (otherContinuousYear - 1) * 12 + other.month;
+
+        let diff = otherMonths - thisMonths;
+
+        // Adjust for day differences
+        if (other.day < this.day) {
+            diff--;
+        }
+
+        return diff;
+    }
+
+    /**
+     * Returns the approximate number of years between this date and another date.
+     *
+     * The calculation accounts for the year 0 gap and considers whether the
+     * anniversary has been reached in the target year.
+     * For exact day differences, use {@link differenceInDays}.
+     *
+     * @param other - The date to compare against.
+     * @returns The approximate number of years from this date to `other` (negative if `other` is earlier).
+     */
+    differenceInYears(other: JalaliDate): number {
+        // Convert to continuous year numbering to handle year 0 gap
+        const thisContinuousYear = this.year <= 0 ? this.year + 1 : this.year;
+        const otherContinuousYear = other.year <= 0 ? other.year + 1 : other.year;
+
+        let diff = otherContinuousYear - thisContinuousYear;
+
+        // Adjust if the anniversary hasn't been reached yet
+        if (other.month < this.month || (other.month === this.month && other.day < this.day)) {
+            diff--;
+        }
+
+        return diff;
+    }
+
     // ---------------------------------------------------------------------------
     // Formatting
     // ---------------------------------------------------------------------------
@@ -724,10 +1143,14 @@ export class JalaliDate {
      * Quoted text in single or double quotes is output verbatim (without the quotes).
      *
      * @param pattern - Format string.
+     * @param rlm - Controls Right-to-Left Mark insertion:
+     *              - `'never'`: Never add RLM (default)
+     *              - `'always'`: Always prepend RLM to the result
+     *              - `'auto'`: Add RLM only when result starts with a Persian digit
      * @returns Formatted date string.
      */
-    format(pattern: string): string {
-        return pattern.replace(FORMAT_TOKENS, (token): string => {
+    format(pattern: string, rlm: 'never' | 'always' | 'auto' = 'never'): string {
+        const result = pattern.replace(FORMAT_TOKENS, (token): string => {
             if (token[0] === '"' || token[0] === "'") {
                 return token.slice(1, -1);
             }
@@ -753,6 +1176,13 @@ export class JalaliDate {
                     return token;
             }
         });
+
+        // Prepend right-to-left mark if:
+        // - rlm is 'always'
+        // - rlm is 'auto' and the result starts with a Persian digit
+        return rlm === 'always' || (rlm === 'auto' && /^[\u06F0-\u06F9]/.test(result))
+            ? '\u200F' + result
+            : result;
     }
 
     /**
