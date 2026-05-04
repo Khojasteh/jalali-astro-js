@@ -6,6 +6,8 @@ Accurate Gregorian and Jalali date conversion for JavaScript and TypeScript, wit
 
 Unlike libraries that rely on repeating leap-year cycles, this package does not use a fixed arithmetic approximation, avoiding known failure cases in years where cycle-based rules place Nowruz on the wrong Gregorian day.
 
+The library provides a comprehensive API including date arithmetic, formatting, parsing, validation, week calculations, and immutable date manipulation.
+
 > تفاوت اصلی این بسته با بسیاری از کتابخانه‌های رایج جلالی این است که برای تشخیص سال کبیسه از چرخه‌های عددی ثابت استفاده نمی‌کند.
 >
 > این بسته زمان نوروز را بر پایهٔ محاسبهٔ نجومی اعتدال بهاری در زمان رسمی ایران به‌دست می‌آورد و کبیسه بودن هر سال را از فاصلهٔ میان دو نوروز پیاپی تعیین می‌کند.
@@ -14,15 +16,36 @@ Unlike libraries that rely on repeating leap-year cycles, this package does not 
 
 ## Features
 
-* Gregorian to Jalali conversion
-* Jalali to Gregorian conversion
-* Leap years derived from astronomical Nowruz calculation
-* Immutable `JalaliDate` value object
+**Core functionality:**
+* Astronomically accurate Gregorian to Jalali and Jalali to Gregorian conversion
+* Leap years derived from vernal equinox calculation (not fixed cycles)
+* Immutable `JalaliDate` value object with rich properties and methods
+* Various date creation methods (day of year, week of year, nth weekday of month, etc.)
+
+**Date manipulation:**
 * Date arithmetic with days, months, and years
-* Formatting and parsing of Jalali dates
-* TypeScript declarations included
+* Derived dates (start/end of year, quarter, month, week)
+* Immutability helpers (withYear, withMonth, withDay)
+* Date difference calculations (days, months, years)
+* Age calculation
+
+**Rich properties:**
+* Year, quarter, month, day properties
+* Week of year and week of month
+* Day of year and day of week
+* Persian month and day-of-week names
+* Leap year detection and days-in-month/year
+
+**Formatting & parsing:**
+* Flexible formatting with Persian numerals
+* Pattern-based parsing with Persian/Latin digit support
+* Month and weekday name support
+
+**Quality & compatibility:**
+* Full TypeScript type definitions
 * ES module and CommonJS builds
 * Zero runtime dependencies
+* Comprehensive test suite
 
 ## Installation
 
@@ -35,30 +58,39 @@ npm install jalali-astro
 ```ts
 import { JalaliDate } from 'jalali-astro';
 
-// Today's Jalali date in Tehran civil time
-const today = JalaliDate.today();
-console.log(today.toString()); // e.g. "1405/02/12"
-
-// Date arithmetic
-const yesterday = today.addDays(-1);
-const nextMonth = today.addMonths(1);
-const lastYear = today.addYears(-1);
-
-// Formatting
-console.log(today.format('DDDD D MMMM YYYY'));
-// "جمعه ۱ فروردین ۱۴۰۴"
-
-// Convert from Gregorian
-const j = JalaliDate.fromGregorian(2025, 3, 21);
-console.log(j.toString()); // "1404/01/01"
-console.log(j.isLeapYear); // false
-console.log(j.daysInYear); // 365
+// Convert from Gregorian to Jalali
+const nowruz1404 = JalaliDate.fromGregorian(2025, 3, 21);
+console.log(nowruz1404.toString());  // "1404/01/01"
+console.log(nowruz1404.isLeapYear);  // false
 
 // Convert to Gregorian
-const g = j.toGregorian(); // { year: 2025, month: 3, day: 21 }
+const g = nowruz1404.toGregorian();  // { year: 2025, month: 3, day: 21 }
 
-// Parsing
-const parsed = JalaliDate.parse('جمعه ۱ فروردین ۱۴۰۴', 'DDDD D MMMM YYYY');
+// Today's Jalali date in Tehran civil time
+const today = JalaliDate.today();
+const yesterday = today.addDays(-1);
+const nextMonth = today.addMonths(1);
+
+// Comparison
+if (today.isAfter(nowruz1404)) {
+  console.log('Today is after Nowruz 1404');
+}
+
+// Create a fixed date for demonstration
+const date = new JalaliDate(1405, 2, 14);
+console.log(date.toString());  // "1405/02/14"
+console.log(date.monthName);   // "اردیبهشت"
+console.log(date.dayOfWeekName);   // "دوشنبه"
+console.log(date.weekOfYear);      // 7
+
+// Formatting with Persian numerals and names
+console.log(date.format('DDDD D MMMM YYYY'));
+// "دوشنبه ۱۴ اردیبهشت ۱۴۰۵"
+
+// Parsing (supports Persian and Latin digits)
+const parsed1 = JalaliDate.parse('1405/02/14');
+const parsed2 = JalaliDate.parse('۱۴۰۵/۰۲/۱۴');
+const parsed3 = JalaliDate.parse('‏۱۴ اردیبهشت ۱۴۰۵', 'D MMMM YYYY');
 ```
 
 ## How the calendar works
@@ -188,6 +220,38 @@ const nowruz = JalaliDate.fromDayOfYear(1404, 1);
 
 Throws `RangeError` if `dayOfYear` is outside the valid range for the given year.
 
+#### `JalaliDate.fromWeekOfYear(year, weekNumber, dayOfWeek)`
+
+Creates a Jalali date from a year, week number, and day of week.
+
+Week 1 is the week containing 1 Farvardin. Weeks start on Saturday (6) and end on Friday (5).
+
+```ts
+const saturday = JalaliDate.fromWeekOfYear(1404, 1, 6);
+const friday = JalaliDate.fromWeekOfYear(1404, 1, 5);
+```
+
+Throws `RangeError` if the parameters are out of range or the resulting date is invalid.
+
+#### `JalaliDate.fromNthWeekdayOfMonth(year, month, nth, dayOfWeek)`
+
+Creates a Jalali date for the nth occurrence of a weekday within a specific month.
+
+Positive `nth` values count from the beginning of the month (1 = first occurrence, 2 = second, etc.). Negative `nth` values count from the end of the month (-1 = last occurrence, -2 = second-to-last, etc.).
+
+```ts
+// Second Tuesday of Ordibehesht 1405
+const date = JalaliDate.fromNthWeekdayOfMonth(1405, 2, 2, 2);
+
+// Last Friday of Esfand 1404
+const lastFriday = JalaliDate.fromNthWeekdayOfMonth(1404, 12, -1, 5);
+
+// First Saturday of Farvardin 1404
+const firstSat = JalaliDate.fromNthWeekdayOfMonth(1404, 1, 1, 6);
+```
+
+Throws `RangeError` if the parameters are out of range or the nth occurrence doesn't exist in the month.
+
 #### `JalaliDate.fromJDN(jdn)`
 
 Creates a Jalali date from a Julian Day Number.
@@ -219,22 +283,38 @@ Supported tokens:
 | `DD`   | Zero-padded day of month |
 | `DDDD` | Persian weekday name     |
 
-Persian-Indic digits are accepted when parsing. Quoted text in single or double quotes is matched literally.
+Persian-Indic digits are accepted when parsing. Bidirectional control characters (RLM, LRM, etc.) are automatically stripped from both the input string and pattern, and leading/trailing whitespace is trimmed before parsing. Quoted text in single or double quotes is matched literally.
 
 ### Static utilities
 
-| Method                                | Description                                                                                    |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `JalaliDate.isLeapYear(year)`         | Returns whether the given Jalali year is a leap year.                                          |
-| `JalaliDate.daysInMonth(year, month)` | Returns the number of days in a Jalali month.                                                  |
-| `JalaliDate.daysInYear(year)`         | Returns the number of days in a Jalali year.                                                   |
-| `JalaliDate.vernalEquinox(year)`      | Returns the UTC time of the vernal equinox used to determine Nowruz for the given Jalali year. |
+| Method                                                 | Description                                                                                    |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `JalaliDate.isValidDate(year, month, day)`             | Returns `true` if the given date is valid, `false` otherwise (without throwing).               |
+| `JalaliDate.isLeapYear(year)`                          | Returns whether the given Jalali year is a leap year.                                          |
+| `JalaliDate.daysInMonth(year, month)`                  | Returns the number of days in a Jalali month.                                                  |
+| `JalaliDate.daysInYear(year)`                          | Returns the number of days in a Jalali year.                                                   |
+| `JalaliDate.vernalEquinox(year)`                       | Returns the UTC time of the vernal equinox used to determine Nowruz for the given Jalali year. |
+| `JalaliDate.age(birthDate, referenceDate?)`            | Calculates age in complete years from birth date to reference date (defaults to today).        |
 
 ```ts
+JalaliDate.isValidDate(year: number, month: number, day: number): boolean
 JalaliDate.isLeapYear(year: number): boolean
 JalaliDate.daysInMonth(year: number, month: number): number
 JalaliDate.daysInYear(year: number): number
 JalaliDate.vernalEquinox(year: number): Date
+JalaliDate.age(birthDate: JalaliDate, referenceDate?: JalaliDate): number
+```
+
+```ts
+// Validation without throwing
+if (JalaliDate.isValidDate(1403, 12, 30)) {
+  const date = new JalaliDate(1403, 12, 30);
+}
+
+// Calculate age
+const birthDate = new JalaliDate(1380, 5, 15);
+const currentAge = JalaliDate.age(birthDate); // Age as of today
+const ageAtDate = JalaliDate.age(birthDate, new JalaliDate(1403, 5, 15)); // Age at specific date
 ```
 
 ### Range constants
@@ -248,17 +328,22 @@ JalaliDate.vernalEquinox(year: number): Date
 
 ### Instance properties
 
-| Property           | Description                                                                          |
-| ------------------ | ------------------------------------------------------------------------------------ |
-| `date.year`        | Jalali year.                                                                         |
-| `date.month`       | Jalali month, from `1` to `12`.                                                      |
-| `date.day`         | Jalali day of month.                                                                 |
-| `date.jdn`         | Julian Day Number for the date.                                                      |
-| `date.dayOfYear`   | 1-based day of year.                                                                 |
-| `date.dayOfWeek`   | Day of week using the JavaScript `Date` convention: `0 = Sunday`, …, `6 = Saturday`. |
-| `date.isLeapYear`  | Whether the date's year is a leap year.                                              |
-| `date.daysInMonth` | Number of days in the date's month.                                                  |
-| `date.daysInYear`  | Number of days in the date's year.                                                   |
+| Property             | Description                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| `date.year`          | Jalali year.                                                                         |
+| `date.quarter`       | Quarter of the year from `1` to `4`                                                  |
+| `date.month`         | Jalali month, from `1` to `12`.                                                      |
+| `date.day`           | Jalali day of month.                                                                 |
+| `date.jdn`           | Julian Day Number for the date.                                                      |
+| `date.weekOfYear`    | 1-based week number (1-52 or 1-53). Week 1 contains 1 Farvardin.                     |
+| `date.weekOfMonth`   | 1-based week number of the month (1-4, 1-5, or 1-6). Week 1 contains day 1.          |
+| `date.dayOfYear`     | 1-based day of year.                                                                 |
+| `date.dayOfWeek`     | Day of week using the JavaScript `Date` convention: `0 = Sunday`, …, `6 = Saturday`. |
+| `date.monthName`     | Persian name of the month (e.g., 'فروردین', 'اردیبهشت', etc.).                      |
+| `date.dayOfWeekName` | Persian name of the day (e.g., 'شنبه', 'یکشنبه', etc.).                             |
+| `date.isLeapYear`    | Whether the date's year is a leap year.                                              |
+| `date.daysInMonth`   | Number of days in the date's month.                                                  |
+| `date.daysInYear`    | Number of days in the date's year.                                                   |
 
 ### Conversion
 
@@ -289,25 +374,121 @@ const lastYear = today.addYears(-1);
 
 When adding months or years, the day is clamped if the target month or year has fewer days.
 
+### Derived dates
+
+Methods to obtain related dates from the current date. All return new `JalaliDate` instances.
+
+| Method                   | Description                                                        |
+| ------------------------ | ------------------------------------------------------------------ |
+| `date.startOfYear()`     | Returns the first day of this date's year (1 Farvardin).           |
+| `date.endOfYear()`       | Returns the last day of this date's year (29 or 30 Esfand).        |
+| `date.startOfQuarter()`  | Returns the first day of this date's quarter.                      |
+| `date.endOfQuarter()`    | Returns the last day of this date's quarter.                       |
+| `date.startOfMonth()`    | Returns the first day of this date's month.                        |
+| `date.endOfMonth()`      | Returns the last day of this date's month.                         |
+| `date.startOfWeek()`     | Returns the first day of the week containing this date (Saturday). |
+| `date.endOfWeek()`       | Returns the last day of the week containing this date (Friday).    |
+
+```ts
+const date = new JalaliDate(1403, 6, 15);
+
+// Year boundaries
+const yearStart = date.startOfYear();   // 1403/01/01
+const yearEnd = date.endOfYear();       // 1403/12/30 (leap year)
+
+// Quarter boundaries
+const quarterStart = date.startOfQuarter(); // 1403/04/01 (Q2)
+const quarterEnd = date.endOfQuarter();     // 1403/06/31 (Q2)
+
+// Month boundaries
+const monthStart = date.startOfMonth(); // 1403/06/01
+const monthEnd = date.endOfMonth();     // 1403/06/31
+
+// Week boundaries (Saturday to Friday)
+const weekStart = date.startOfWeek();   // Saturday of this week
+const weekEnd = date.endOfWeek();       // Friday of this week
+```
+
+Weeks start on Saturday (the traditional first day of the week in Iran) and end on Friday.
+
+### Immutability helpers
+
+Methods to create a copy of the date with specific fields changed. All return new `JalaliDate` instances.
+
+| Method                  | Description                                               |
+| ----------------------- | --------------------------------------------------------- |
+| `date.withYear(year)`   | Returns a new date with the specified year.               |
+| `date.withMonth(month)` | Returns a new date with the specified month.              |
+| `date.withDay(day)`     | Returns a new date with the specified day.                |
+
+```ts
+const date = new JalaliDate(1403, 5, 15);
+
+const sameDate1404 = date.withYear(1404);   // 1404/05/15
+const differentMonth = date.withMonth(8);   // 1403/08/15
+const differentDay = date.withDay(20);      // 1403/05/20
+```
+
+When changing the year or month, the day is clamped if the target month has fewer days.
+
 ### Comparison
 
-| Method                  | Description                                                                                                                 |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `date.compareTo(other)` | Returns a negative number, zero, or a positive number depending on whether this date is before, equal to, or after `other`. |
-| `date.equals(other)`    | Returns `true` if both dates represent the same calendar day.                                                               |
-| `date.isBefore(other)`  | Returns `true` if this date is strictly earlier than `other`.                                                               |
-| `date.isAfter(other)`   | Returns `true` if this date is strictly later than `other`.                                                                 |
+| Method                            | Description                                                                                                                 |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `date.compareTo(other)`           | Returns a negative number, zero, or a positive number depending on whether this date is before, equal to, or after `other`. |
+| `date.equals(other)`              | Returns `true` if both dates represent the same calendar day.                                                               |
+| `date.isBefore(other)`            | Returns `true` if this date is strictly earlier than `other`.                                                               |
+| `date.isAfter(other)`             | Returns `true` if this date is strictly later than `other`.                                                                 |
+| `date.isBetween(start, end)`      | Returns `true` if this date is between `start` and `end` (inclusive).                                                       |
+
+```ts
+const date = new JalaliDate(1403, 5, 15);
+const start = new JalaliDate(1403, 5, 1);
+const end = new JalaliDate(1403, 5, 31);
+
+date.isBetween(start, end); // true
+```
+
+### Date differences
+
+Methods to calculate differences between dates.
+
+| Method                          | Description                                                                        |
+| ------------------------------- | ---------------------------------------------------------------------------------- |
+| `date.differenceInDays(other)`  | Returns the number of days from this date to `other` (negative if `other` is earlier). |
+| `date.differenceInMonths(other)` | Returns the approximate number of months from this date to `other`.                |
+| `date.differenceInYears(other)` | Returns the approximate number of years from this date to `other`.                 |
+
+```ts
+const date1 = new JalaliDate(1400, 5, 15);
+const date2 = new JalaliDate(1403, 8, 20);
+
+date1.differenceInDays(date2);   // Positive number (future)
+date1.differenceInMonths(date2); // ~39 months
+date1.differenceInYears(date2);  // 3 years
+
+date2.differenceInDays(date1);   // Negative number (past)
+```
 
 ### Formatting and serialization
 
-#### `date.format(pattern)`
+#### `date.format(pattern, rlm?)`
 
 Formats the date using Persian month names, Persian weekday names, and Persian-Indic digits for numeric fields.
 
 ```ts
 date.format('DDDD D MMMM YYYY');
 // "جمعه ۱ فروردین ۱۴۰۴"
+
+// With RLM (Right-to-Left Mark) for proper bidirectional text display
+date.format('D MMMM YYYY', 'auto');
+// "‏۱۴ اردیبهشت ۱۴۰۵" (with RLM prefix for correct RTL display)
 ```
+
+The `rlm` parameter controls Right-to-Left Mark insertion:
+- `'never'` (default): Never add RLM
+- `'always'`: Always prepend RLM to the result
+- `'auto'`: Add RLM only when the result starts with a Persian digit
 
 The format tokens are the same as the tokens accepted by `JalaliDate.parse()`.
 
