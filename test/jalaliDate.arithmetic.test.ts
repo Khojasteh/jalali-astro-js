@@ -1,5 +1,5 @@
 /**
- * Tests for JalaliDate arithmetic methods (addDays, addMonths, addYears)
+ * Tests for JalaliDate arithmetic methods.
  */
 
 import { describe, it } from 'node:test';
@@ -7,177 +7,195 @@ import assert from 'node:assert/strict';
 import { JalaliDate } from '../src/jalaliDate.ts';
 
 describe('addDays', () => {
-    it('adds positive days', () => {
-        const d = new JalaliDate(1402, 6, 31).addDays(1);
-        assert.deepEqual({ year: d.year, month: d.month, day: d.day }, { year: 1402, month: 7, day: 1 });
+    const cases: Array<{
+        start: JalaliDate;
+        days: number;
+        expected: { year: number; month: number; day: number };
+    }> = [
+            { start: new JalaliDate(1402, 6, 31), days: 1, expected: { year: 1402, month: 7, day: 1 } },
+            { start: new JalaliDate(1402, 7, 1), days: -1, expected: { year: 1402, month: 6, day: 31 } },
+            { start: new JalaliDate(1402, 12, 29), days: 1, expected: { year: 1403, month: 1, day: 1 } },
+            { start: new JalaliDate(1403, 1, 1), days: -1, expected: { year: 1402, month: 12, day: 29 } },
+            { start: new JalaliDate(1403, 12, 30), days: 1, expected: { year: 1404, month: 1, day: 1 } },
+            { start: new JalaliDate(1403, 1, 1), days: 365, expected: { year: 1403, month: 12, day: 30 } },
+        ];
+
+    for (const { start, days, expected } of cases) {
+        it(`${start.toString()}.addDays(${days})`, () => {
+            const result = start.addDays(days);
+            assert.deepEqual(result.toObject(), expected);
+        });
+    }
+
+    it('skips year 0 when adding one day after the final day of Jalali year -1', () => {
+        const lastDay = JalaliDate.daysInMonth(-1, 12);
+        const result = new JalaliDate(-1, 12, lastDay).addDays(1);
+        assert.deepEqual(result.toObject(), { year: 1, month: 1, day: 1 });
     });
 
-    it('adds negative days', () => {
-        const d = new JalaliDate(1402, 7, 1).addDays(-1);
-        assert.deepEqual({ year: d.year, month: d.month, day: d.day }, { year: 1402, month: 6, day: 31 });
+    it('skips year 0 when subtracting one day before Jalali 1/1/1', () => {
+        const lastDay = JalaliDate.daysInMonth(-1, 12);
+        const result = new JalaliDate(1, 1, 1).addDays(-1);
+        assert.deepEqual(result.toObject(), { year: -1, month: 12, day: lastDay });
     });
 
-    it('crosses year boundary', () => {
-        const d = new JalaliDate(1402, 12, 29).addDays(1);
-        assert.deepEqual({ year: d.year, month: d.month, day: d.day }, { year: 1403, month: 1, day: 1 });
-    });
-
-    it('is commutative: +n then -n returns original', () => {
+    it('adding n and then -n returns the original date', () => {
         const original = new JalaliDate(1402, 6, 15);
-        assert.ok(original.addDays(100).addDays(-100).equals(original));
+        const result = original.addDays(100).addDays(-100);
+        assert.ok(result.equals(original), 'Expected addDays to be reversible');
     });
 
-    it('handles adding 0 days', () => {
-        const d = new JalaliDate(1402, 6, 15);
-        const same = d.addDays(0);
-        assert.ok(same.equals(d));
+    it('addDays(0) returns an equal but distinct value object', () => {
+        const original = new JalaliDate(1402, 6, 15);
+        const result = original.addDays(0);
+
+        assert.ok(result.equals(original), 'Expected result to equal original');
+        assert.notEqual(result, original);
+    });
+
+    it('rejects non-integer day counts', () => {
+        const original = new JalaliDate(1402, 6, 15);
+
+        for (const value of [1.5, NaN, Infinity, -Infinity]) {
+            assert.throws(
+                () => original.addDays(value),
+                RangeError,
+                `Expected addDays(${value}) to throw`
+            );
+        }
+    });
+
+    it('rejects results outside the supported range', () => {
+        assert.throws(
+            () => new JalaliDate(JalaliDate.MIN_YEAR, 1, 1).addDays(-1),
+            RangeError,
+            `Expected addDays(-1) on MIN_YEAR to throw`
+        );
+
+        const max = new JalaliDate(
+            JalaliDate.MAX_YEAR,
+            12,
+            JalaliDate.daysInMonth(JalaliDate.MAX_YEAR, 12)
+        );
+        assert.throws(
+            () => max.addDays(1),
+            RangeError,
+            `Expected addDays(1) on MAX_YEAR to throw`
+        );
     });
 });
 
 describe('addMonths', () => {
-    it('adds one month within the same year', () => {
-        const d = new JalaliDate(1402, 5, 15).addMonths(1);
-        assert.deepEqual({ year: d.year, month: d.month, day: d.day }, { year: 1402, month: 6, day: 15 });
+    const cases: Array<{
+        start: JalaliDate;
+        months: number;
+        expected: { year: number; month: number; day: number };
+    }> = [
+            { start: new JalaliDate(1402, 5, 15), months: 1, expected: { year: 1402, month: 6, day: 15 } },
+            { start: new JalaliDate(1402, 12, 1), months: 1, expected: { year: 1403, month: 1, day: 1 } },
+            { start: new JalaliDate(1402, 6, 31), months: 1, expected: { year: 1402, month: 7, day: 30 } },
+            { start: new JalaliDate(1402, 3, 15), months: -2, expected: { year: 1402, month: 1, day: 15 } },
+            { start: new JalaliDate(1402, 6, 15), months: 12, expected: { year: 1403, month: 6, day: 15 } },
+            { start: new JalaliDate(1402, 6, 15), months: 24, expected: { year: 1404, month: 6, day: 15 } },
+            { start: new JalaliDate(1402, 2, 15), months: -13, expected: { year: 1401, month: 1, day: 15 } },
+            { start: new JalaliDate(1403, 12, 30), months: 12, expected: { year: 1404, month: 12, day: 29 } },
+            { start: new JalaliDate(1, 1, 15), months: -1, expected: { year: -1, month: 12, day: 15 } },
+            { start: new JalaliDate(-1, 6, 15), months: 7, expected: { year: 1, month: 1, day: 15 } },
+        ];
+
+    for (const { start, months, expected } of cases) {
+        it(`${start.toString()}.addMonths(${months})`, () => {
+            const result = start.addMonths(months);
+            assert.deepEqual(result.toObject(), expected);
+        });
+    }
+
+    it('addMonths(0) returns an equal but distinct value object', () => {
+        const original = new JalaliDate(1402, 6, 15);
+        const result = original.addMonths(0);
+
+        assert.ok(result.equals(original));
+        assert.notEqual(result, original);
     });
 
-    it('wraps from month 12 to month 1 of next year', () => {
-        const d = new JalaliDate(1402, 12, 1).addMonths(1);
-        assert.deepEqual({ year: d.year, month: d.month, day: d.day }, { year: 1403, month: 1, day: 1 });
+    it('rejects non-integer month counts', () => {
+        const original = new JalaliDate(1402, 6, 15);
+
+        for (const value of [1.5, NaN, Infinity, -Infinity]) {
+            assert.throws(
+                () => original.addMonths(value),
+                RangeError,
+                `Expected addMonths(${value}) to throw`
+            );
+        }
     });
 
-    it('clamps day to last day of shorter month', () => {
-        const d = new JalaliDate(1402, 6, 31).addMonths(1);
-        assert.deepEqual({ year: d.year, month: d.month, day: d.day }, { year: 1402, month: 7, day: 30 });
-    });
-
-    it('subtracts months with negative n', () => {
-        const d = new JalaliDate(1402, 3, 15).addMonths(-2);
-        assert.deepEqual({ year: d.year, month: d.month, day: d.day }, { year: 1402, month: 1, day: 15 });
-    });
-
-    it('adds 12 months (one year)', () => {
-        const d = new JalaliDate(1402, 6, 15).addMonths(12);
-        assert.deepEqual({ year: d.year, month: d.month, day: d.day }, { year: 1403, month: 6, day: 15 });
-    });
-
-    it('adds 24 months (two years)', () => {
-        const d = new JalaliDate(1402, 6, 15).addMonths(24);
-        assert.deepEqual({ year: d.year, month: d.month, day: d.day }, { year: 1404, month: 6, day: 15 });
-    });
-
-    it('subtracts 13 months crossing year boundary', () => {
-        const d = new JalaliDate(1402, 2, 15).addMonths(-13);
-        assert.deepEqual({ year: d.year, month: d.month, day: d.day }, { year: 1401, month: 1, day: 15 });
-    });
-
-    it('handles 0 months', () => {
-        const d = new JalaliDate(1402, 6, 15);
-        const same = d.addMonths(0);
-        assert.ok(same.equals(d));
-    });
-
-    it('clamps Esfand 30 when moving to common year', () => {
-        const d = new JalaliDate(1403, 12, 30).addMonths(12);
-        assert.equal(d.day, 29);
-    });
-
-    it('skips year 0 when adding months from year -1 to year 1', () => {
-        const d = new JalaliDate(-1, 12, 15).addMonths(1);
-        assert.equal(d.year, 1);
-        assert.equal(d.month, 1);
-        assert.equal(d.day, 15);
-    });
-
-    it('skips year 0 when subtracting months from year 1 to year -1', () => {
-        const d = new JalaliDate(1, 1, 15).addMonths(-1);
-        assert.equal(d.year, -1);
-        assert.equal(d.month, 12);
-        assert.equal(d.day, 15);
-    });
-
-    it('skips year 0 when adding many months across the boundary', () => {
-        const d = new JalaliDate(-1, 6, 15).addMonths(7);
-        assert.equal(d.year, 1);
-        assert.equal(d.month, 1);
+    it('rejects results outside the supported range', () => {
+        assert.throws(
+            () => new JalaliDate(JalaliDate.MIN_YEAR, 1, 1).addMonths(-1),
+            RangeError,
+            `Expected addMonths(-1) on MIN_YEAR to throw`
+        );
+        assert.throws(
+            () => new JalaliDate(JalaliDate.MAX_YEAR, 12, 1).addMonths(1),
+            RangeError,
+            `Expected addMonths(1) on MAX_YEAR to throw`
+        );
     });
 });
 
 describe('addYears', () => {
-    it('adds one year', () => {
-        const d = new JalaliDate(1402, 6, 15).addYears(1);
-        assert.deepEqual({ year: d.year, month: d.month, day: d.day }, { year: 1403, month: 6, day: 15 });
+    const cases: Array<{
+        start: JalaliDate;
+        years: number;
+        expected: { year: number; month: number; day: number };
+    }> = [
+            { start: new JalaliDate(1402, 6, 15), years: 1, expected: { year: 1403, month: 6, day: 15 } },
+            { start: new JalaliDate(1403, 12, 30), years: 1, expected: { year: 1404, month: 12, day: 29 } },
+            { start: new JalaliDate(1402, 6, 15), years: -2, expected: { year: 1400, month: 6, day: 15 } },
+            { start: new JalaliDate(1400, 6, 15), years: 10, expected: { year: 1410, month: 6, day: 15 } },
+            { start: new JalaliDate(-1, 6, 15), years: 1, expected: { year: 1, month: 6, day: 15 } },
+            { start: new JalaliDate(1, 6, 15), years: -1, expected: { year: -1, month: 6, day: 15 } },
+            { start: new JalaliDate(-5, 6, 15), years: 10, expected: { year: 6, month: 6, day: 15 } },
+        ];
+
+    for (const { start, years, expected } of cases) {
+        it(`${start.toString()}.addYears(${years})`, () => {
+            const result = start.addYears(years);
+            assert.deepEqual(result.toObject(), expected);
+        });
+    }
+
+    it('addYears(0) returns an equal but distinct value object', () => {
+        const original = new JalaliDate(1402, 6, 15);
+        const result = original.addYears(0);
+
+        assert.ok(result.equals(original), 'Expected result to equal original');
+        assert.notEqual(result, original);
     });
 
-    it('clamps Esfand 30 (leap day) to Esfand 29 in a common year', () => {
-        const d = new JalaliDate(1403, 12, 30).addYears(1);
-        assert.deepEqual({ year: d.year, month: d.month, day: d.day }, { year: 1404, month: 12, day: 29 });
+    it('rejects non-integer year counts', () => {
+        const original = new JalaliDate(1402, 6, 15);
+
+        for (const value of [1.5, NaN, Infinity, -Infinity]) {
+            assert.throws(
+                () => original.addYears(value),
+                RangeError,
+                `Expected addYears(${value}) to throw`
+            );
+        }
     });
 
-    it('subtracts years with negative n', () => {
-        const d = new JalaliDate(1402, 6, 15).addYears(-2);
-        assert.deepEqual({ year: d.year, month: d.month, day: d.day }, { year: 1400, month: 6, day: 15 });
-    });
-
-    it('handles 0 years', () => {
-        const d = new JalaliDate(1402, 6, 15);
-        const same = d.addYears(0);
-        assert.ok(same.equals(d));
-    });
-
-    it('adds multiple years', () => {
-        const d = new JalaliDate(1400, 6, 15).addYears(10);
-        assert.equal(d.year, 1410);
-    });
-
-    it('skips year 0 when adding years from negative to positive', () => {
-        const d = new JalaliDate(-1, 6, 15).addYears(1);
-        assert.equal(d.year, 1);
-        assert.equal(d.month, 6);
-        assert.equal(d.day, 15);
-    });
-
-    it('skips year 0 when subtracting years from positive to negative', () => {
-        const d = new JalaliDate(1, 6, 15).addYears(-1);
-        assert.equal(d.year, -1);
-        assert.equal(d.month, 6);
-        assert.equal(d.day, 15);
-    });
-
-    it('skips year 0 when adding multiple years across the boundary', () => {
-        const d = new JalaliDate(-5, 6, 15).addYears(10);
-        assert.equal(d.year, 6);
-        assert.equal(d.month, 6);
-    });
-});
-
-describe('arithmetic out of supported range', () => {
-    it('addDays past JalaliDate.MAX_YEAR throws', () => {
-        const d = new JalaliDate(JalaliDate.MAX_YEAR, 12, 29);
-        assert.throws(() => d.addDays(10), Error);
-    });
-
-    it('addDays before JalaliDate.MIN_YEAR throws', () => {
-        const d = new JalaliDate(JalaliDate.MIN_YEAR, 1, 1);
-        assert.throws(() => d.addDays(-1), Error);
-    });
-
-    it('addMonths past JalaliDate.MAX_YEAR throws', () => {
-        const d = new JalaliDate(JalaliDate.MAX_YEAR, 1, 1);
-        assert.throws(() => d.addMonths(13), RangeError);
-    });
-
-    it('addMonths before JalaliDate.MIN_YEAR throws', () => {
-        const d = new JalaliDate(JalaliDate.MIN_YEAR, 1, 1);
-        assert.throws(() => d.addMonths(-1), RangeError);
-    });
-
-    it('addYears past JalaliDate.MAX_YEAR throws', () => {
-        const d = new JalaliDate(JalaliDate.MAX_YEAR, 1, 1);
-        assert.throws(() => d.addYears(1), RangeError);
-    });
-
-    it('addYears before JalaliDate.MIN_YEAR throws', () => {
-        const d = new JalaliDate(JalaliDate.MIN_YEAR, 1, 1);
-        assert.throws(() => d.addYears(-1), RangeError);
+    it('rejects results outside the supported range', () => {
+        assert.throws(
+            () => new JalaliDate(JalaliDate.MIN_YEAR, 1, 1).addYears(-1),
+            RangeError,
+            `Expected addYears(-1) on MIN_YEAR to throw`
+        );
+        assert.throws(
+            () => new JalaliDate(JalaliDate.MAX_YEAR, 1, 1).addYears(1),
+            RangeError,
+            `Expected addYears(1) on MAX_YEAR to throw`
+        );
     });
 });

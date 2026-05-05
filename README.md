@@ -210,6 +210,19 @@ console.log(date.toString()); // "1404/01/01"
 
 Throws `RangeError` if the Gregorian date is invalid or outside the supported range.
 
+#### `JalaliDate.fromIsoDateString(isoString)`
+
+Creates a JalaliDate from an ISO 8601 date string in the format "YYYY-MM-DD".
+
+```ts
+const date = JalaliDate.fromIsoDateString("2025-03-21");
+console.log(date.toString()); // "1404/01/01"
+```
+
+Throws `Error` if the input string is not a valid ISO date.
+
+Throws `RangeError` if the Gregorian date is invalid or out of supported range.
+
 #### `JalaliDate.fromDayOfYear(year, dayOfYear)`
 
 Creates a Jalali date from a Jalali year and 1-based day of year.
@@ -354,6 +367,24 @@ Returns the equivalent proleptic Gregorian date.
 ```ts
 const gregorian = date.toGregorian();
 // { year: 2025, month: 3, day: 21 }
+```
+
+#### `date.toObject()`
+
+Returns the Jalali date as a plain object.
+
+```ts
+const obj = date.toObject();
+// { year: 1404, month: 1, day: 1 }
+```
+
+#### `date.toIsoDateString()`
+
+Returns the equivalent Gregorian date as an ISO 8601 date string in "YYYY-MM-DD" format.
+
+```ts
+const iso = date.toIsoDateString();
+// "2025-03-21"
 ```
 
 ### Arithmetic

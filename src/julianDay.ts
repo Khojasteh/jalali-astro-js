@@ -9,23 +9,46 @@
  * No year zero: year −1 precedes year 1.
  */
 
+import { toAstronomicalYear, toCalendarYear } from './yearUtils.js';
+
+/**
+ * Asserts that the given year is a valid non-zero integer for the proleptic Gregorian calendar.
+ *
+ * @param year - The year to validate.
+ * @throws {RangeError} If the year is not a non-zero integer.
+ */
+function assertValidYear(year: number): asserts year is number {
+    if (!Number.isInteger(year) || year === 0) {
+        throw new RangeError('Year must be a non-zero integer in the proleptic Gregorian calendar.');
+    }
+}
+
+/**
+ * Asserts that the given month is a valid integer between 1 and 12.
+ *
+ * @param month - The month to validate.
+ * @throws {RangeError} If the month is not an integer between 1 and 12.
+ */
+function assertValidMonth(month: number): asserts month is number {
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+        throw new RangeError('Month must be an integer between 1 and 12.');
+    }
+}
+
 /**
  * Converts a proleptic Gregorian date to its Julian Day Number.
- *
- * This is a low-level conversion function that does not validate inputs.
- * Invalid dates (e.g., year 0, month 13, or 2024-02-30) will produce
- * mathematically consistent JDN values as if the calendar were extended.
  *
  * @param year  - Proleptic Gregorian year (year −1 = 1 BCE, no year 0).
  * @param month - Month (1 = January … 12 = December).
  * @param day   - Day of month (1-based).
  * @returns The Julian Day Number (integer) for the given date.
+ * @throws {RangeError} If the year is zero or the month is out of range.
  */
 export function gregorianToJDN(year: number, month: number, day: number): number {
-    // Convert from the "no year 0" convention (year -1 = 1 BCE) to astronomical
-    // (year 0 = 1 BCE) as required by the Richards formula.  Year 0 does not
-    // exist in the input; year -1 maps to astronomical 0, year -2 to -1, etc.
-    const y0 = year <= 0 ? year + 1 : year;
+    assertValidYear(year);
+    assertValidMonth(month);
+
+    const y0 = toAstronomicalYear(year);
     // Shift Jan/Feb into the previous year for the calculation
     const a = Math.floor((14 - month) / 12);
     const y = y0 + 4800 - a;
@@ -57,32 +80,9 @@ export function gregorianFromJDN(jdn: number): { year: number; month: number; da
     const day = e - Math.floor((153 * m + 2) / 5) + 1;
     const month = m + 3 - 12 * Math.floor(m / 10);
     const rawYear = 100 * b + d - 4800 + Math.floor(m / 10);
-    // Proleptic Gregorian has no year 0: skip from -1 to 1
-    const year = rawYear <= 0 ? rawYear - 1 : rawYear;
+    const year = toCalendarYear(rawYear);
 
     return { year, month, day };
-}
-
-/**
- * Returns the number of days in a given month of the proleptic Gregorian calendar.
- *
- * @param year  - Proleptic Gregorian year (for leap year calculation).
- * @param month - Month (1 = January … 12 = December).
- * @returns Number of days in the month (28–31).
- */
-export function gregorianDaysInMonth(year: number, month: number): number {
-    const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    return month === 2 && gregorianIsLeapYear(year) ? 29 : daysInMonth[month - 1]!;
-}
-
-/**
- * Returns true if the given proleptic Gregorian year is a leap year.
- *
- * @param year - Proleptic Gregorian year.
- * @returns `true` if the year is a leap year, `false` otherwise.
- */
-export function gregorianIsLeapYear(year: number): boolean {
-    return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 }
 
 /**
@@ -96,4 +96,33 @@ export function gregorianIsLeapYear(year: number): boolean {
  */
 export function dayOfWeekFromJDN(jdn: number): number {
     return (jdn + 1) % 7;
+}
+
+/**
+ * Returns the number of days in a given month of the proleptic Gregorian calendar.
+ *
+ * @param year  - Proleptic Gregorian year (for leap year calculation).
+ * @param month - Month (1 = January … 12 = December).
+ * @returns Number of days in the month (28–31).
+ * @throws {RangeError} If the year is zero or the month is out of range.
+ */
+export function gregorianDaysInMonth(year: number, month: number): number {
+    assertValidYear(year);
+    assertValidMonth(month);
+
+    const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return month === 2 && gregorianIsLeapYear(year) ? 29 : daysInMonth[month - 1]!;
+}
+
+/**
+ * Returns true if the given proleptic Gregorian year is a leap year.
+ *
+ * @param year - Proleptic Gregorian year.
+ * @returns `true` if the year is a leap year, `false` otherwise.
+ * @throws {RangeError} If the year is zero.
+ */
+export function gregorianIsLeapYear(year: number): boolean {
+    assertValidYear(year);
+
+    return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 }

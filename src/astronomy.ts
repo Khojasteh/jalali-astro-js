@@ -126,19 +126,27 @@ const VERNAL_EQUINOX_CORRECTIONS: ReadonlyArray<readonly [number, number, number
     [8, 15.45, 16859.074],
 ];
 
+/**
+ * Conversion factor from degrees to radians.
+ */
 const DEG_TO_RAD = Math.PI / 180;
+
+/**
+ * Julian Day of the J2000.0 epoch (2000 January 1.5 TT).
+ */
 const J2000_JD = 2451545.0;
 
 /**
  * Calculates the Julian Day of the vernal equinox for a given Gregorian year,
  * expressed in Universal Time (UT).
  *
- * @param gregorianYear - The Gregorian year (integer; no year 0 in the proleptic calendar).
+ * @param gregorianYear - The Gregorian year (integer; uses astronomical year numbering,
+ *                        where year 0 = 1 BCE, year −1 = 2 BCE, etc.).
  * @returns The Julian Day Number of the vernal equinox instant, in UT (fractional JD).
  * @throws {RangeError} If the year is outside [{@link MEEUS_MIN_YEAR}, {@link MEEUS_MAX_YEAR}].
  */
 export function vernalEquinoxJD(gregorianYear: number): number {
-    if (gregorianYear < MEEUS_MIN_YEAR || gregorianYear > MEEUS_MAX_YEAR) {
+    if (!Number.isInteger(gregorianYear) || gregorianYear < MEEUS_MIN_YEAR || gregorianYear > MEEUS_MAX_YEAR) {
         throw new RangeError(
             `Year ${gregorianYear} is out of range. Valid range: ${MEEUS_MIN_YEAR}–${MEEUS_MAX_YEAR}.`
         );
