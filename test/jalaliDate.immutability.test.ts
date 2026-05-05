@@ -1,76 +1,120 @@
 /**
- * Tests for JalaliDate immutability helper methods
+ * Tests for JalaliDate immutable with* methods.
  */
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { JalaliDate } from '../src/index.js';
+import { JalaliDate } from '../src/jalaliDate.ts';
 
 describe('withYear', () => {
-    it('changes the year', () => {
-        const date = new JalaliDate(1403, 5, 15);
-        const newDate = date.withYear(1400);
-        assert.equal(newDate.year, 1400);
-        assert.equal(newDate.month, 5);
-        assert.equal(newDate.day, 15);
-        // Original unchanged
-        assert.equal(date.year, 1403);
+    it('changes only the year when the original day exists in the target year', () => {
+        const original = new JalaliDate(1403, 5, 15);
+        const changed = original.withYear(1400);
+
+        assert.deepEqual(changed.toObject(), { year: 1400, month: 5, day: 15 });
+        assert.deepEqual(original.toObject(), { year: 1403, month: 5, day: 15 });
+        assert.notEqual(changed, original);
     });
 
-    it('clamps day when moving from leap year to common year', () => {
-        const date = new JalaliDate(1403, 12, 30); // Leap year
-        const newDate = date.withYear(1402); // Common year
-        assert.equal(newDate.year, 1402);
-        assert.equal(newDate.month, 12);
-        assert.equal(newDate.day, 29); // Clamped from 30
+    it('clamps Esfand 30 when moving to a common year', () => {
+        const changed = new JalaliDate(1403, 12, 30).withYear(1402);
+        assert.deepEqual(changed.toObject(), { year: 1402, month: 12, day: 29 });
     });
 
-    it('throws for invalid year', () => {
+    it('skips year zero when changing year across the BCE/CE boundary', () => {
+        const changed = new JalaliDate(-1, 6, 15).withYear(1);
+        assert.deepEqual(changed.toObject(), { year: 1, month: 6, day: 15 });
+    });
+
+    it('rejects invalid target years', () => {
         const date = new JalaliDate(1403, 5, 15);
-        assert.throws(() => date.withYear(0));
+
+        assert.throws(
+            () => date.withYear(0),
+            RangeError,
+            `Expected withYear(0) to throw`
+        );
+        assert.throws(
+            () => date.withYear(1.5),
+            RangeError,
+            `Expected withYear(1.5) to throw`
+        );
+        assert.throws(
+            () => date.withYear(JalaliDate.MIN_YEAR - 1),
+            RangeError,
+            `Expected withYear(${JalaliDate.MIN_YEAR - 1}) to throw`
+        );
+        assert.throws(
+            () => date.withYear(JalaliDate.MAX_YEAR + 1),
+            RangeError,
+            `Expected withYear(${JalaliDate.MAX_YEAR + 1}) to throw`
+        );
     });
 });
 
 describe('withMonth', () => {
-    it('changes the month', () => {
-        const date = new JalaliDate(1403, 5, 15);
-        const newDate = date.withMonth(8);
-        assert.equal(newDate.year, 1403);
-        assert.equal(newDate.month, 8);
-        assert.equal(newDate.day, 15);
-        // Original unchanged
-        assert.equal(date.month, 5);
+    it('changes only the month when the original day exists in the target month', () => {
+        const original = new JalaliDate(1403, 5, 15);
+        const changed = original.withMonth(8);
+
+        assert.deepEqual(changed.toObject(), { year: 1403, month: 8, day: 15 });
+        assert.deepEqual(original.toObject(), { year: 1403, month: 5, day: 15 });
+        assert.notEqual(changed, original);
     });
 
-    it('clamps day when moving to shorter month', () => {
-        const date = new JalaliDate(1403, 1, 31); // Farvardin has 31 days
-        const newDate = date.withMonth(7); // Mehr has 30 days
-        assert.equal(newDate.year, 1403);
-        assert.equal(newDate.month, 7);
-        assert.equal(newDate.day, 30); // Clamped from 31
+    it('clamps day when moving to a shorter month', () => {
+        const changed = new JalaliDate(1403, 1, 31).withMonth(7);
+        assert.deepEqual(changed.toObject(), { year: 1403, month: 7, day: 30 });
     });
 
-    it('throws for invalid month', () => {
+    it('rejects invalid target months', () => {
         const date = new JalaliDate(1403, 5, 15);
-        assert.throws(() => date.withMonth(13));
-        assert.throws(() => date.withMonth(0));
+
+        assert.throws(
+            () => date.withMonth(0),
+            RangeError,
+            `Expected withMonth(0) to throw`
+        );
+        assert.throws(
+            () => date.withMonth(13),
+            RangeError,
+            `Expected withMonth(13) to throw`
+        );
+        assert.throws(
+            () => date.withMonth(1.5),
+            RangeError,
+            `Expected withMonth(1.5) to throw`
+        );
     });
 });
 
 describe('withDay', () => {
-    it('changes the day', () => {
-        const date = new JalaliDate(1403, 5, 15);
-        const newDate = date.withDay(20);
-        assert.equal(newDate.year, 1403);
-        assert.equal(newDate.month, 5);
-        assert.equal(newDate.day, 20);
-        // Original unchanged
-        assert.equal(date.day, 15);
+    it('changes only the day', () => {
+        const original = new JalaliDate(1403, 5, 15);
+        const changed = original.withDay(20);
+
+        assert.deepEqual(changed.toObject(), { year: 1403, month: 5, day: 20 });
+        assert.deepEqual(original.toObject(), { year: 1403, month: 5, day: 15 });
+        assert.notEqual(changed, original);
     });
 
-    it('throws for invalid day', () => {
+    it('rejects invalid target days for the existing month', () => {
         const date = new JalaliDate(1403, 7, 15);
-        assert.throws(() => date.withDay(32));
-        assert.throws(() => date.withDay(0));
+
+        assert.throws(
+            () => date.withDay(0),
+            RangeError,
+            `Expected withDay(0) to throw`
+        );
+        assert.throws(
+            () => date.withDay(31),
+            RangeError,
+            `Expected withDay(31) to throw`
+        );
+        assert.throws(
+            () => date.withDay(1.5),
+            RangeError,
+            `Expected withDay(1.5) to throw`
+        );
     });
 });

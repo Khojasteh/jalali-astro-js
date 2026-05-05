@@ -1,143 +1,219 @@
 /**
- * Tests for Persian number formatting and parsing.
+ * Tests for src/persianNumbers.ts
+ *
+ * Verifies formatting and parsing of Persian-Indic integer strings.
  */
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { PersianNumbers } from '../src/persianNumbers.ts';
 
-describe('PersianNumbers', () => {
-    it('formats a positive number with Persian digits', () => {
-        assert.equal(PersianNumbers.format(1405), '۱۴۰۵');
+describe('PersianNumbers.format', () => {
+    const cases: Array<{
+        value: number;
+        expected: string;
+        minDigits?: number;
+    }> = [
+            { value: 0, expected: '۰' },
+            { value: 1, expected: '۱' },
+            { value: 9, expected: '۹' },
+            { value: 10, expected: '۱۰' },
+            { value: 42, expected: '۴۲' },
+            { value: 1234567890, expected: '۱۲۳۴۵۶۷۸۹۰' },
+
+            { value: -1, expected: '-۱' },
+            { value: -42, expected: '-۴۲' },
+            { value: -1234567890, expected: '-۱۲۳۴۵۶۷۸۹۰' },
+
+            { value: 0, minDigits: 2, expected: '۰۰' },
+            { value: 0, minDigits: 4, expected: '۰۰۰۰' },
+            { value: 7, minDigits: 2, expected: '۰۷' },
+            { value: 42, minDigits: 5, expected: '۰۰۰۴۲' },
+            { value: 123, minDigits: 2, expected: '۱۲۳' },
+
+            { value: -7, minDigits: 2, expected: '-۰۷' },
+            { value: -42, minDigits: 5, expected: '-۰۰۰۴۲' },
+        ];
+
+    for (const { value, minDigits, expected } of cases) {
+        it(`formats ${value}${minDigits === undefined ? '' : ` with minDigits ${minDigits}`} as "${expected}"`, () => {
+            assert.equal(
+                PersianNumbers.format(value, minDigits),
+                expected
+            );
+        });
+    }
+
+    it('throws for non-integer values', () => {
+        const invalidValues = [
+            1.5,
+            -1.5,
+            NaN,
+            Infinity,
+            -Infinity,
+        ];
+
+        for (const value of invalidValues) {
+            assert.throws(
+                () => PersianNumbers.format(value),
+                Error,
+                `Expected format(${value}) to throw`
+            );
+        }
+    });
+});
+
+describe('PersianNumbers.parse', () => {
+    const cases: Array<{
+        input: string;
+        expected: number;
+    }> = [
+            { input: '۰', expected: 0 },
+            { input: '۱', expected: 1 },
+            { input: '۹', expected: 9 },
+            { input: '۱۰', expected: 10 },
+            { input: '۴۲', expected: 42 },
+            { input: '۱۲۳۴۵۶۷۸۹۰', expected: 1234567890 },
+
+            { input: '0', expected: 0 },
+            { input: '1', expected: 1 },
+            { input: '9', expected: 9 },
+            { input: '10', expected: 10 },
+            { input: '42', expected: 42 },
+            { input: '1234567890', expected: 1234567890 },
+
+            { input: '۱۲3۴۵', expected: 12345 },
+            { input: '1۲3۴5', expected: 12345 },
+
+            { input: '-۱', expected: -1 },
+            { input: '-۴۲', expected: -42 },
+            { input: '-123', expected: -123 },
+            { input: '-۱۲3', expected: -123 },
+
+            { input: '−۱', expected: -1 },
+            { input: '−۴۲', expected: -42 },
+            { input: '−123', expected: -123 },
+
+            { input: '+۱', expected: 1 },
+            { input: '+۴۲', expected: 42 },
+            { input: '+123', expected: 123 },
+            { input: '+۱۲3', expected: 123 },
+
+            { input: '  ۴۲  ', expected: 42 },
+            { input: '\t-۱۲۳\n', expected: -123 },
+
+            { input: '۰۰۷', expected: 7 },
+            { input: '-۰۰۷', expected: -7 },
+            { input: '+۰۰۷', expected: 7 },
+        ];
+
+    for (const { input, expected } of cases) {
+        it(`parses "${input}" as ${expected}`, () => {
+            assert.equal(
+                PersianNumbers.parse(input),
+                expected
+            );
+        });
+    }
+
+    it('throws for empty or whitespace-only strings', () => {
+        const invalidInputs = [
+            '',
+            ' ',
+            '   ',
+            '\t',
+            '\n',
+            '\t\n ',
+        ];
+
+        for (const input of invalidInputs) {
+            assert.throws(
+                () => PersianNumbers.parse(input),
+                Error,
+                `Expected parse(${JSON.stringify(input)}) to throw`
+            );
+        }
     });
 
-    it('formats a number with minimum width padding', () => {
-        assert.equal(PersianNumbers.format(5, 3), '۰۰۵');
+    it('throws for sign-only strings', () => {
+        const invalidInputs = [
+            '+',
+            '-',
+            '−',
+            ' + ',
+            ' - ',
+            ' − ',
+        ];
+
+        for (const input of invalidInputs) {
+            assert.throws(
+                () => PersianNumbers.parse(input),
+                Error,
+                `Expected parse(${JSON.stringify(input)}) to throw`
+            );
+        }
     });
 
-    it('formats a negative number with Persian digits', () => {
-        assert.equal(PersianNumbers.format(-12), '-۱۲');
+    it('throws for invalid characters', () => {
+        const invalidInputs = [
+            'abc',
+            '۱۲a',
+            'a۱۲',
+            '۱۲ ۳',
+            '1 2',
+            '۴۲.۰',
+            '42.0',
+            '۴۲,۰۰۰',
+            '42,000',
+            '--1',
+            '++1',
+            '+-1',
+            '-+1',
+        ];
+
+        for (const input of invalidInputs) {
+            assert.throws(
+                () => PersianNumbers.parse(input),
+                Error,
+                `Expected parse(${JSON.stringify(input)}) to throw`
+            );
+        }
+    });
+});
+
+describe('PersianNumbers format/parse round-trip', () => {
+    const values = [
+        0,
+        1,
+        7,
+        10,
+        42,
+        999,
+        1234567890,
+        -1,
+        -7,
+        -10,
+        -42,
+        -999,
+        -1234567890,
+    ];
+
+    for (const value of values) {
+        it(`round-trips ${value}`, () => {
+            assert.equal(
+                PersianNumbers.parse(PersianNumbers.format(value)),
+                value
+            );
+        });
+    }
+
+    it('round-trips padded positive values', () => {
+        assert.equal(PersianNumbers.parse(PersianNumbers.format(7, 3)), 7);
+        assert.equal(PersianNumbers.parse(PersianNumbers.format(42, 5)), 42);
     });
 
-    it('formats zero', () => {
-        assert.equal(PersianNumbers.format(0), '۰');
-    });
-
-    it('formats zero with padding', () => {
-        assert.equal(PersianNumbers.format(0, 3), '۰۰۰');
-    });
-
-    it('formats with minDigits of 0', () => {
-        assert.equal(PersianNumbers.format(123, 0), '۱۲۳');
-    });
-
-    it('formats large numbers', () => {
-        assert.equal(PersianNumbers.format(123456789), '۱۲۳۴۵۶۷۸۹');
-    });
-
-    it('formats single digit', () => {
-        assert.equal(PersianNumbers.format(7), '۷');
-    });
-
-    it('parses Latin digits', () => {
-        assert.equal(PersianNumbers.parse('2026'), 2026);
-    });
-
-    it('parses Persian digits', () => {
-        assert.equal(PersianNumbers.parse('۲۰۲۶'), 2026);
-    });
-
-    it('parses mixed Latin and Persian digits', () => {
-        assert.equal(PersianNumbers.parse('2۰2۶'), 2026);
-    });
-
-    it('parses a negative Latin number', () => {
-        assert.equal(PersianNumbers.parse('-1405'), -1405);
-    });
-
-    it('parses a negative Persian number', () => {
-        assert.equal(PersianNumbers.parse('-۱۴۰۵'), -1405);
-    });
-
-    it('parses a number with + prefix', () => {
-        assert.equal(PersianNumbers.parse('+123'), 123);
-    });
-
-    it('parses a Persian number with + prefix', () => {
-        assert.equal(PersianNumbers.parse('+۱۲۳'), 123);
-    });
-
-    it('parses a number with Unicode minus (−)', () => {
-        assert.equal(PersianNumbers.parse('−۱۲۳'), -123);
-    });
-
-    it('parses a number with leading zeros and Latin digits', () => {
-        assert.equal(PersianNumbers.parse('0007'), 7);
-    });
-
-    it('parses a number with leading zeros and Persian digits', () => {
-        assert.equal(PersianNumbers.parse('۰۰۰۷'), 7);
-    });
-
-    it('parses a number with leading zeros and mixed digits', () => {
-        assert.equal(PersianNumbers.parse('۰۰07'), 7);
-    });
-
-    it('parses Latin zero', () => {
-        assert.equal(PersianNumbers.parse('0'), 0);
-    });
-
-    it('parses Persian zero', () => {
-        assert.equal(PersianNumbers.parse('۰'), 0);
-    });
-
-    it('parses a number with leading and trailing whitespace', () => {
-        assert.equal(PersianNumbers.parse('  ۱۴۰۵  '), 1405);
-    });
-
-    it('throws on invalid numeric input', () => {
-        assert.throws(() => PersianNumbers.parse('۱۴۰۵A'), Error);
-    });
-
-    it('throws on empty string input', () => {
-        assert.throws(() => PersianNumbers.parse(''), Error);
-    });
-
-    it('throws on whitespace-only input', () => {
-        assert.throws(() => PersianNumbers.parse('   '), Error);
-    });
-
-    it('throws on sign-only input', () => {
-        assert.throws(() => PersianNumbers.parse('-'), Error);
-    });
-
-    it('throws on + sign only', () => {
-        assert.throws(() => PersianNumbers.parse('+'), Error);
-    });
-
-    it('throws on invalid characters in middle', () => {
-        assert.throws(() => PersianNumbers.parse('12A34'), Error);
-    });
-
-    it('throws on mixed valid and invalid characters', () => {
-        assert.throws(() => PersianNumbers.parse('۱۲.۳۴'), Error);
-    });
-
-    it('parses large numbers', () => {
-        assert.equal(PersianNumbers.parse('123456789'), 123456789);
-    });
-
-    it('parses large Persian numbers', () => {
-        assert.equal(PersianNumbers.parse('۱۲۳۴۵۶۷۸۹'), 123456789);
-    });
-
-    it('parses negative zero as zero', () => {
-        const result = PersianNumbers.parse('-0');
-        // -0 and 0 are considered equal in non-strict comparison
-        assert.ok(result === 0 || result === -0);
-    });
-
-    it('parses number with many leading zeros', () => {
-        assert.equal(PersianNumbers.parse('000000123'), 123);
+    it('round-trips padded negative values', () => {
+        assert.equal(PersianNumbers.parse(PersianNumbers.format(-7, 3)), -7);
+        assert.equal(PersianNumbers.parse(PersianNumbers.format(-42, 5)), -42);
     });
 });

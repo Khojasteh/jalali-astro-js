@@ -7,15 +7,7 @@
  */
 
 import { vernalEquinoxJD, MEEUS_MIN_YEAR, MEEUS_MAX_YEAR } from './astronomy.js';
-
-/**
- * The mapping from Jalali year to its Gregorian year equivalent.
- * Jalali year 1 corresponds to 622 CE (Gregorian), so: gregorianYear = jalaliYear + 621.
- *
- * The Meeus algorithm uses the proleptic Gregorian calendar with no year 0,
- * so no extra correction is needed — the caller just adds 621.
- */
-export const JALALI_TO_GREGORIAN_OFFSET = 621;
+import { jalaliToGregorianYear, gregorianToJalaliYear } from './yearUtils.js';
 
 /**
  * Iran Standard Time offset from UTC in fractional days (+03:30).
@@ -44,11 +36,12 @@ export function nowruzJDN(jalaliYear: number): number {
     if (jalaliYear === 0) {
         throw new RangeError('Year 0 does not exist in the Jalali calendar.');
     }
-    const gregorianYear = jalaliYear + JALALI_TO_GREGORIAN_OFFSET;
+
+    const gregorianYear = jalaliToGregorianYear(jalaliYear);
     if (gregorianYear < MEEUS_MIN_YEAR || gregorianYear > MEEUS_MAX_YEAR) {
         throw new RangeError(
             `Jalali year ${jalaliYear} is out of range. Supported range: ` +
-            `${MEEUS_MIN_YEAR - JALALI_TO_GREGORIAN_OFFSET}–${MEEUS_MAX_YEAR - JALALI_TO_GREGORIAN_OFFSET}.`
+            `${gregorianToJalaliYear(MEEUS_MIN_YEAR)}–${gregorianToJalaliYear(MEEUS_MAX_YEAR)}.`
         );
     }
 

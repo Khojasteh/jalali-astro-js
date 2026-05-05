@@ -2,7 +2,7 @@
  * Formatting and parsing of Persian numbers.
  *
  * This module converts between Latin digits and Persian-Indic digits,
- * and parses signed numeric strings containing Latin, Persian, or mixed digits.
+ * and parses signed integer strings containing Latin, Persian, or mixed digits.
  */
 
 const ASCII_ZERO = '0'.charCodeAt(0);
@@ -18,8 +18,13 @@ export class PersianNumbers {
      * @param value    - The number to convert.
      * @param minDigits - Minimum number of digits to output, padded with leading zeros if necessary (default is zero).
      * @returns The number as a string of Persian-Indic digits.
+     * @throws {Error} If the value is not an integer.
      */
     static format(value: number, minDigits = 0): string {
+        if (!Number.isInteger(value)) {
+            throw new Error('Value must be an integer.');
+        }
+
         const digits: string[] = [];
         let n = Math.abs(value);
 
