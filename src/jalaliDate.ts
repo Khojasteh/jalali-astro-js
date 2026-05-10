@@ -15,6 +15,34 @@ import { toAstronomicalYear, toCalendarYear, jalaliToGregorianYear, gregorianToJ
 import { nowruzJDN } from './nowruz.js';
 import { PersianNumbers } from './persianNumbers.js';
 
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/**
+ * Day of week enumeration following the JavaScript Date convention.
+ */
+export enum DayOfWeek {
+    Sunday = 0,
+    Monday = 1,
+    Tuesday = 2,
+    Wednesday = 3,
+    Thursday = 4,
+    Friday = 5,
+    Saturday = 6
+}
+
+/**
+ * Named constants for nth occurrence of a weekday in a month.
+ */
+export enum Occurrence {
+    First = 1,
+    Second = 2,
+    Third = 3,
+    Fourth = 4,
+    Last = -1
+}
+
 /**
  * Iran Standard Time offset in milliseconds (+03:30).
  */
@@ -422,11 +450,11 @@ export class JalaliDate {
      *
      * @param year - Jalali year.
      * @param weekNumber - Week number (1-based, typically 1-52 or 1-53).
-     * @param dayOfWeek - Day of week (0 = Sunday, …, 6 = Saturday).
+     * @param dayOfWeek - Day of week (0 = Sunday, …, 6 = Saturday). Can use {@link DayOfWeek} enum or a number.
      * @returns The corresponding `JalaliDate` for the given week and day.
      * @throws {RangeError} If the parameters are out of range or the resulting date is invalid.
      */
-    static fromWeekOfYear(year: number, weekNumber: number, dayOfWeek: number): JalaliDate {
+    static fromWeekOfYear(year: number, weekNumber: number, dayOfWeek: DayOfWeek | number): JalaliDate {
         JalaliDate.assertJalaliYearInRange(year);
         JalaliDate.assertWeekNumberInRange(weekNumber);
         JalaliDate.assertDayOfWeekInRange(dayOfWeek);
@@ -469,11 +497,12 @@ export class JalaliDate {
      * @param month - Month (1 = Farvardin … 12 = Esfand).
      * @param nth - Occurrence number. Positive for counting from start (1 = first, 2 = second, etc.),
      *              negative for counting from end (-1 = last, -2 = second-to-last, etc.). Cannot be 0.
-     * @param dayOfWeek - Day of week (0 = Sunday, …, 6 = Saturday).
+     *              Can use {@link Occurrence} enum or a number.
+     * @param dayOfWeek - Day of week (0 = Sunday, …, 6 = Saturday). Can use {@link DayOfWeek} enum or a number.
      * @returns The corresponding `JalaliDate` for the nth occurrence of the weekday in the month.
      * @throws {RangeError} If the parameters are out of range or the nth occurrence doesn't exist in the month.
      */
-    static fromNthWeekdayOfMonth(year: number, month: number, nth: number, dayOfWeek: number): JalaliDate {
+    static fromNthWeekdayOfMonth(year: number, month: number, nth: Occurrence | number, dayOfWeek: DayOfWeek | number): JalaliDate {
         JalaliDate.assertJalaliYearInRange(year);
         JalaliDate.assertMonthInRange(month);
         JalaliDate.assertNthInRange(nth);
