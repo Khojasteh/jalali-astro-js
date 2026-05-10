@@ -24,17 +24,38 @@ describe('jdn', () => {
     });
 });
 
-describe('daysInMonth, daysInYear, isLeapYear', () => {
-    it('reports month and year lengths for common and leap years', () => {
+describe('daysInMonth', () => {
+    it('reports correct days in month for common year', () => {
         const common = new JalaliDate(1402, 12, 1);
-        const leap = new JalaliDate(1403, 12, 1);
-
         assert.equal(common.daysInMonth, 29);
-        assert.equal(common.daysInYear, 365);
-        assert.equal(common.isLeapYear, false);
+    });
 
+    it('reports correct days in month for leap year', () => {
+        const leap = new JalaliDate(1403, 12, 1);
         assert.equal(leap.daysInMonth, 30);
+    });
+});
+
+describe('daysInYear', () => {
+    it('reports correct days in year for common year', () => {
+        const common = new JalaliDate(1402, 12, 1);
+        assert.equal(common.daysInYear, 365);
+    });
+
+    it('reports correct days in year for leap year', () => {
+        const leap = new JalaliDate(1403, 12, 1);
         assert.equal(leap.daysInYear, 366);
+    });
+});
+
+describe('isLeapYear', () => {
+    it('identifies common year correctly', () => {
+        const common = new JalaliDate(1402, 12, 1);
+        assert.equal(common.isLeapYear, false);
+    });
+
+    it('identifies leap year correctly', () => {
+        const leap = new JalaliDate(1403, 12, 1);
         assert.equal(leap.isLeapYear, true);
     });
 });
@@ -57,37 +78,47 @@ describe('dayOfYear', () => {
     }
 });
 
-describe('dayOfWeek and dayOfWeekName', () => {
-    const cases: Array<[JalaliDate, number, string]> = [
-        [new JalaliDate(1403, 1, 1), 3, 'چهارشنبه'],
-        [new JalaliDate(1403, 1, 2), 4, 'پنجشنبه'],
-        [new JalaliDate(1403, 1, 3), 5, 'جمعه'],
-        [new JalaliDate(1403, 1, 4), 6, 'شنبه'],
-        [new JalaliDate(1403, 1, 5), 0, 'یکشنبه'],
-        [new JalaliDate(1403, 1, 6), 1, 'دوشنبه'],
-        [new JalaliDate(1403, 1, 7), 2, 'سه‌شنبه'],
+describe('dayOfWeek', () => {
+    const cases: Array<[JalaliDate, number]> = [
+        [new JalaliDate(1403, 1, 1), 3],
+        [new JalaliDate(1403, 1, 2), 4],
+        [new JalaliDate(1403, 1, 3), 5],
+        [new JalaliDate(1403, 1, 4), 6],
+        [new JalaliDate(1403, 1, 5), 0],
+        [new JalaliDate(1403, 1, 6), 1],
+        [new JalaliDate(1403, 1, 7), 2],
     ];
 
-    for (const [date, dayOfWeek, dayName] of cases) {
-        it(`${date.toString()} has dayOfWeek=${dayOfWeek} and name ${dayName}`, () => {
-            assert.equal(date.dayOfWeek, dayOfWeek);
-            assert.equal(date.dayOfWeekName, dayName);
+    for (const [date, expected] of cases) {
+        it(`${date.toString()} has dayOfWeek=${expected}`, () => {
+            assert.equal(date.dayOfWeek, expected);
         });
     }
 });
 
-describe('weekOfYear and weekOfMonth', () => {
+describe('dayOfWeekName', () => {
+    const cases: Array<[JalaliDate, string]> = [
+        [new JalaliDate(1403, 1, 1), 'چهارشنبه'],
+        [new JalaliDate(1403, 1, 2), 'پنجشنبه'],
+        [new JalaliDate(1403, 1, 3), 'جمعه'],
+        [new JalaliDate(1403, 1, 4), 'شنبه'],
+        [new JalaliDate(1403, 1, 5), 'یکشنبه'],
+        [new JalaliDate(1403, 1, 6), 'دوشنبه'],
+        [new JalaliDate(1403, 1, 7), 'سه‌شنبه'],
+    ];
+
+    for (const [date, expected] of cases) {
+        it(`${date.toString()} has dayOfWeekName ${expected}`, () => {
+            assert.equal(date.dayOfWeekName, expected);
+        });
+    }
+});
+
+describe('weekOfYear', () => {
     it('uses Saturday-start weeks for weekOfYear', () => {
         assert.equal(new JalaliDate(1403, 1, 1).weekOfYear, 1);
         assert.equal(new JalaliDate(1403, 1, 3).weekOfYear, 1);
         assert.equal(new JalaliDate(1403, 1, 4).weekOfYear, 2);
-    });
-
-    it('uses Saturday-start weeks for weekOfMonth', () => {
-        assert.equal(new JalaliDate(1403, 1, 1).weekOfMonth, 1);
-        assert.equal(new JalaliDate(1403, 1, 3).weekOfMonth, 1);
-        assert.equal(new JalaliDate(1403, 1, 4).weekOfMonth, 2);
-        assert.equal(new JalaliDate(1403, 1, 31).weekOfMonth, 5);
     });
 
     it('weekOfYear round-trips through fromWeekOfYear for representative dates', () => {
@@ -107,17 +138,33 @@ describe('weekOfYear and weekOfMonth', () => {
     });
 });
 
-describe('monthName and quarter', () => {
+describe('weekOfMonth', () => {
+    it('uses Saturday-start weeks for weekOfMonth', () => {
+        assert.equal(new JalaliDate(1403, 1, 1).weekOfMonth, 1);
+        assert.equal(new JalaliDate(1403, 1, 3).weekOfMonth, 1);
+        assert.equal(new JalaliDate(1403, 1, 4).weekOfMonth, 2);
+        assert.equal(new JalaliDate(1403, 1, 31).weekOfMonth, 5);
+    });
+});
+
+describe('monthName', () => {
     const months = [
         'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
         'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند',
     ];
 
     for (let month = 1; month <= 12; month++) {
-        it(`month ${month} has correct name and quarter`, () => {
+        it(`month ${month} has correct name`, () => {
             const date = new JalaliDate(1403, month, 1);
-
             assert.equal(date.monthName, months[month - 1]);
+        });
+    }
+});
+
+describe('quarter', () => {
+    for (let month = 1; month <= 12; month++) {
+        it(`month ${month} has correct quarter`, () => {
+            const date = new JalaliDate(1403, month, 1);
             assert.equal(date.quarter, Math.ceil(month / 3));
         });
     }

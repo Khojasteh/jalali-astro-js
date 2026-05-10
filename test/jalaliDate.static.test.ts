@@ -6,6 +6,18 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { JalaliDate } from '../src/jalaliDate.ts';
 
+// Verification window where leap years are explicitly marked in a published table
+// Source: Solar Hijri calendar correspondence table (leap years marked with '*')
+// https://en.wikipedia.org/wiki/Solar_Hijri_calendar
+const KNOWN_LEAP_YEARS = [
+    1354, 1358, 1362, 1366,
+    1370, 1375, 1379, 1383,
+    1387, 1391, 1395, 1399,
+    1403, 1408, 1412, 1416
+];
+const LEAP_VERIFY_MIN_YEAR = 1351;
+const LEAP_VERIFY_MAX_YEAR = 1419;
+
 describe('JalaliDate.isValidDate', () => {
     const cases: Array<[number, number, number, boolean]> = [
         [1403, 1, 1, true],
@@ -64,18 +76,19 @@ describe('JalaliDate.daysInMonth', () => {
 });
 
 describe('JalaliDate.daysInYear', () => {
-    const cases: Array<[number, number]> = [
-        [1395, 366],
-        [1402, 365],
-        [1403, 366],
-        [1404, 365],
-    ];
+    it('returns 366 days for all known leap years', () => {
+        for (const year of KNOWN_LEAP_YEARS) {
+            assert.equal(JalaliDate.daysInYear(year), 366);
+        }
+    });
 
-    for (const [year, days] of cases) {
-        it(`${year} has ${days} days`, () => {
-            assert.equal(JalaliDate.daysInYear(year), days);
-        });
-    }
+    it('returns 365 days for all known non-leap years', () => {
+        for (let year = LEAP_VERIFY_MIN_YEAR; year <= LEAP_VERIFY_MAX_YEAR; year++) {
+            if (!KNOWN_LEAP_YEARS.includes(year)) {
+                assert.equal(JalaliDate.daysInYear(year), 365);
+            }
+        }
+    });
 
     it('returns days in year for Jalali year 1 correctly', () => {
         const days = JalaliDate.daysInYear(1);
@@ -103,18 +116,19 @@ describe('JalaliDate.daysInYear', () => {
 });
 
 describe('JalaliDate.isLeapYear', () => {
-    const cases: Array<[number, boolean]> = [
-        [1395, true],
-        [1402, false],
-        [1403, true],
-        [1404, false],
-    ];
+    it('returns true for all known leap years', () => {
+        for (const year of KNOWN_LEAP_YEARS) {
+            assert.equal(JalaliDate.isLeapYear(year), true);
+        }
+    });
 
-    for (const [year, isLeap] of cases) {
-        it(`${year} is ${isLeap ? 'a leap year' : 'not a leap year'}`, () => {
-            assert.equal(JalaliDate.isLeapYear(year), isLeap);
-        });
-    }
+    it('returns false for all known non-leap years', () => {
+        for (let year = LEAP_VERIFY_MIN_YEAR; year <= LEAP_VERIFY_MAX_YEAR; year++) {
+            if (!KNOWN_LEAP_YEARS.includes(year)) {
+                assert.equal(JalaliDate.isLeapYear(year), false);
+            }
+        }
+    });
 
     it('rejects invalid years', () => {
         for (const year of [0, JalaliDate.MIN_YEAR - 1, JalaliDate.MAX_YEAR + 1, 1.5, NaN, Infinity]) {

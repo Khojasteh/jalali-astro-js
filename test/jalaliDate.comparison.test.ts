@@ -6,42 +6,116 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { JalaliDate } from '../src/jalaliDate.ts';
 
-describe('equals, compareTo, isBefore, isAfter', () => {
-    const earlier = new JalaliDate(1402, 3, 10);
-    const same = new JalaliDate(1402, 3, 10);
-    const later = new JalaliDate(1402, 3, 11);
-
-    it('compares equal dates', () => {
-        assert.equal(earlier.equals(same), true);
-        assert.equal(earlier.compareTo(same), 0);
-        assert.equal(earlier.isBefore(same), false);
-        assert.equal(earlier.isAfter(same), false);
+describe('equals', () => {
+    it('returns true for identical dates', () => {
+        const date1 = new JalaliDate(1402, 3, 10);
+        const date2 = new JalaliDate(1402, 3, 10);
+        assert.equal(date1.equals(date2), true);
     });
 
-    it('compares different dates in chronological order', () => {
+    it('returns false for different dates', () => {
+        const earlier = new JalaliDate(1402, 3, 10);
+        const later = new JalaliDate(1402, 3, 11);
         assert.equal(earlier.equals(later), false);
+    });
+});
+
+describe('compareTo', () => {
+    it('returns 0 for equal dates', () => {
+        const date1 = new JalaliDate(1402, 3, 10);
+        const date2 = new JalaliDate(1402, 3, 10);
+        assert.equal(date1.compareTo(date2), 0);
+    });
+
+    it('returns negative when this is before other', () => {
+        const earlier = new JalaliDate(1402, 3, 10);
+        const later = new JalaliDate(1402, 3, 11);
         assert.ok(earlier.compareTo(later) < 0);
+    });
+
+    it('returns positive when this is after other', () => {
+        const later = new JalaliDate(1402, 3, 11);
+        const earlier = new JalaliDate(1402, 3, 10);
         assert.ok(later.compareTo(earlier) > 0);
-        assert.equal(earlier.isBefore(later), true);
-        assert.equal(later.isAfter(earlier), true);
     });
 
     it('compares across year boundaries', () => {
         const endOfYear = new JalaliDate(1402, 12, 29);
         const startOfNextYear = new JalaliDate(1403, 1, 1);
-
-        assert.equal(endOfYear.isBefore(startOfNextYear), true);
-        assert.equal(startOfNextYear.isAfter(endOfYear), true);
+        assert.ok(endOfYear.compareTo(startOfNextYear) < 0);
     });
 
-    it('compares across the BCE/CE no-year-zero boundary', () => {
+    it('compares across the no-year-zero boundary', () => {
         const lastDay = JalaliDate.daysInMonth(-1, 12);
         const bce = new JalaliDate(-1, 12, lastDay);
         const ce = new JalaliDate(1, 1, 1);
-
-        assert.equal(bce.isBefore(ce), true);
-        assert.equal(ce.isAfter(bce), true);
         assert.ok(bce.compareTo(ce) < 0);
+    });
+});
+
+describe('isBefore', () => {
+    it('returns false for equal dates', () => {
+        const date1 = new JalaliDate(1402, 3, 10);
+        const date2 = new JalaliDate(1402, 3, 10);
+        assert.equal(date1.isBefore(date2), false);
+    });
+
+    it('returns true when this is before other', () => {
+        const earlier = new JalaliDate(1402, 3, 10);
+        const later = new JalaliDate(1402, 3, 11);
+        assert.equal(earlier.isBefore(later), true);
+    });
+
+    it('returns false when this is after other', () => {
+        const later = new JalaliDate(1402, 3, 11);
+        const earlier = new JalaliDate(1402, 3, 10);
+        assert.equal(later.isBefore(earlier), false);
+    });
+
+    it('works across year boundaries', () => {
+        const endOfYear = new JalaliDate(1402, 12, 29);
+        const startOfNextYear = new JalaliDate(1403, 1, 1);
+        assert.equal(endOfYear.isBefore(startOfNextYear), true);
+    });
+
+    it('works across the no-year-zero boundary', () => {
+        const lastDay = JalaliDate.daysInMonth(-1, 12);
+        const bce = new JalaliDate(-1, 12, lastDay);
+        const ce = new JalaliDate(1, 1, 1);
+        assert.equal(bce.isBefore(ce), true);
+    });
+});
+
+describe('isAfter', () => {
+    it('returns false for equal dates', () => {
+        const date1 = new JalaliDate(1402, 3, 10);
+        const date2 = new JalaliDate(1402, 3, 10);
+        assert.equal(date1.isAfter(date2), false);
+    });
+
+    it('returns true when this is after other', () => {
+        const later = new JalaliDate(1402, 3, 11);
+        const earlier = new JalaliDate(1402, 3, 10);
+        assert.equal(later.isAfter(earlier), true);
+    });
+
+    it('returns false when this is before other', () => {
+        const earlier = new JalaliDate(1402, 3, 10);
+        const later = new JalaliDate(1402, 3, 11);
+        assert.equal(earlier.isAfter(later), false);
+    });
+
+    it('works across year boundaries', () => {
+        const startOfNextYear = new JalaliDate(1403, 1, 1);
+        const endOfYear = new JalaliDate(1402, 12, 29);
+        assert.equal(startOfNextYear.isAfter(endOfYear), true);
+    });
+
+    it('works across the no-year-zero boundary', () => {
+        const ce = new JalaliDate(1, 1, 1);
+        const lastDay = JalaliDate.daysInMonth(-1, 12);
+        const bce = new JalaliDate(-1, 12, lastDay);
+        assert.equal(ce.isAfter(bce), true);
     });
 });
 
