@@ -21,7 +21,7 @@ describe('withYear', () => {
         assert.deepEqual(changed.toObject(), { year: 1402, month: 12, day: 29 });
     });
 
-    it('skips year zero when changing year across the BCE/CE boundary', () => {
+    it('skips year zero when changing year across the no-year-zero boundary', () => {
         const changed = new JalaliDate(-1, 6, 15).withYear(1);
         assert.deepEqual(changed.toObject(), { year: 1, month: 6, day: 15 });
     });

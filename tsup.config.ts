@@ -2,7 +2,8 @@ import { defineConfig } from 'tsup';
 
 export default defineConfig({
   entry: ['src/index.ts'],
-  format: ['esm', 'cjs'],
+  format: ['esm', 'cjs', 'iife'],
+  globalName: 'JalaliAstro',
   dts: true,
   clean: true,
   sourcemap: true,

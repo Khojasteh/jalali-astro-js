@@ -5,5 +5,5 @@
  * Public API.
  */
 
-export { JalaliDate } from './jalaliDate.js';
+export { JalaliDate, DayOfWeek, Occurrence } from './jalaliDate.js';
 export { PersianNumbers } from './persianNumbers.js';
