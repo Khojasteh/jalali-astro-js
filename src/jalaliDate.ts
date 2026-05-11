@@ -44,11 +44,6 @@ export enum Occurrence {
 }
 
 /**
- * Iran Standard Time offset in milliseconds (+03:30).
- */
-const IRAN_OFFSET_MS = (3 * 60 + 30) * 60 * 1000;
-
-/**
  * Julian Day Number of the Unix epoch (1970-01-01 at noon UTC).
  * Used to convert between Julian Day Numbers and Unix timestamps.
  * JDN 2440587 corresponds to 1970-01-01; the fractional .5 shifts
@@ -57,9 +52,14 @@ const IRAN_OFFSET_MS = (3 * 60 + 30) * 60 * 1000;
 const UNIX_EPOCH_JD = 2440587.5;
 
 /**
- * Regular expression to match format tokens in pattern strings.
+ * Number of milliseconds in a day.
  */
-const FORMAT_TOKENS = /"[^"]*"|'[^']*'|YYYY|YY|MMMM|MM|M|DDDD|DD|D/gi;
+const MILLISECONDS_PER_DAY = 86400 * 1000;
+
+/**
+ * Iran Standard Time offset in milliseconds (+03:30).
+ */
+const IRAN_OFFSET_MS = (3 * 60 + 30) * 60 * 1000;
 
 /**
  * Names of the Jalali months in Persian.
@@ -75,6 +75,11 @@ const MONTH_NAMES_FA: ReadonlyArray<string> = [
 const DOW_NAMES_FA: ReadonlyArray<string> = [
     'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'
 ];
+
+/**
+ * Regular expression to match format tokens in pattern strings.
+ */
+const FORMAT_TOKENS = /"[^"]*"|'[^']*'|YYYY|YY|MMMM|MM|M|DDDD|DD|D/gi;
 
 // ---------------------------------------------------------------------------
 // Pattern parsing helpers
@@ -335,7 +340,7 @@ export class JalaliDate {
      */
     protected static assertNthInRange(nth: number): void {
         if (!Number.isInteger(nth) || nth === 0) {
-            throw new RangeError('nth must be a non-zero integer. Use positive numbers (1, 2, 3, ...) or negative numbers (-1, -2, -3, ...).');
+            throw new RangeError('nth must be a non-zero integer.');
         }
     }
 
@@ -402,7 +407,57 @@ export class JalaliDate {
      * @returns A `JalaliDate` representing the current civil date in Iran Standard Time.
      */
     static today(): JalaliDate {
-        return JalaliDate.fromDate(new Date());
+        return JalaliDate.fromUnixTime(Date.now());
+    }
+
+    /**
+     * Returns yesterday's Jalali date in Tehran time.
+     *
+     * @returns A `JalaliDate` representing yesterday's civil date in Iran Standard Time.
+     */
+    static yesterday(): JalaliDate {
+        const yesterdayUnixTime = Date.now() - MILLISECONDS_PER_DAY;
+        return JalaliDate.fromUnixTime(yesterdayUnixTime);
+    }
+
+    /**
+     * Returns tomorrow's Jalali date in Tehran time.
+     * @returns A `JalaliDate` representing tomorrow's civil date in Iran Standard Time.
+     */
+    static tomorrow(): JalaliDate {
+        const tomorrowUnixTime = Date.now() + MILLISECONDS_PER_DAY;
+        return JalaliDate.fromUnixTime(tomorrowUnixTime);
+    }
+
+    /**
+     * Creates a JalaliDate from a Julian Day Number.
+     *
+     * @param jdn - Julian Day Number (integer).
+     * @returns The corresponding `JalaliDate` for the given JDN.
+     * @throws {RangeError} If the JDN is outside the supported range for conversion to a Jalali date.
+     */
+    static fromJDN(jdn: number): JalaliDate {
+        const year = JalaliDate.findYear(jdn);
+        if (year === 0 || year < JalaliDate.MIN_YEAR || year > JalaliDate.MAX_YEAR) {
+            throw new RangeError(
+                `Julian Day Number ${jdn} is out of range for conversion to Jalali date.`
+            );
+        }
+
+        const dayOfYear = jdn - nowruzJDN(year) + 1;
+        return JalaliDate.fromDayOfYear(year, dayOfYear);
+    }
+
+    /**
+     * Creates a JalaliDate from a Unix timestamp (milliseconds since 1970-01-01T00:00:00Z).
+     *
+     * @param unixTime - Unix timestamp in milliseconds.
+     * @return The corresponding `JalaliDate` in Tehran civil time.
+     */
+    static fromUnixTime(unixTime: number): JalaliDate {
+        const jd = UNIX_EPOCH_JD + (unixTime + IRAN_OFFSET_MS) / MILLISECONDS_PER_DAY;
+        const jdn = Math.floor(jd + 0.5);
+        return JalaliDate.fromJDN(jdn);
     }
 
     /**
@@ -415,12 +470,7 @@ export class JalaliDate {
      * @returns The corresponding `JalaliDate` in Tehran civil time.
      */
     static fromDate(date: Date): JalaliDate {
-        const tehran = new Date(date.getTime() + IRAN_OFFSET_MS);
-        return JalaliDate.fromGregorian(
-            tehran.getUTCFullYear(),
-            tehran.getUTCMonth() + 1,
-            tehran.getUTCDate(),
-        );
+        return JalaliDate.fromUnixTime(date.getTime());
     }
 
     /**
@@ -558,25 +608,6 @@ export class JalaliDate {
     }
 
     /**
-     * Creates a JalaliDate from a Julian Day Number.
-     *
-     * @param jdn - Julian Day Number (integer).
-     * @returns The corresponding `JalaliDate` for the given JDN.
-     * @throws {RangeError} If the JDN is outside the supported range for conversion to a Jalali date.
-     */
-    static fromJDN(jdn: number): JalaliDate {
-        const year = JalaliDate.findYear(jdn);
-        if (year === 0 || year < JalaliDate.MIN_YEAR || year > JalaliDate.MAX_YEAR) {
-            throw new RangeError(
-                `Julian Day Number ${jdn} is out of range for conversion to Jalali date.`
-            );
-        }
-
-        const dayOfYear = jdn - nowruzJDN(year) + 1;
-        return JalaliDate.fromDayOfYear(year, dayOfYear);
-    }
-
-    /**
      * Creates a JalaliDate from an ISO 8601 date string in the format "YYYY-MM-DD".
      *
      * @param isoString - The Gregorian date string in "YYYY-MM-DD" format.
@@ -705,10 +736,7 @@ export class JalaliDate {
      * @throws {RangeError} If `year` is outside the supported range or is 0.
      */
     static isLeapYear(year: number): boolean {
-        JalaliDate.assertJalaliYearInRange(year);
-
-        const nextYear = toCalendarYear(toAstronomicalYear(year) + 1);
-        return nowruzJDN(nextYear) - nowruzJDN(year) === 366;
+        return JalaliDate.daysInYear(year) === 366;
     }
 
     /**
@@ -755,9 +783,12 @@ export class JalaliDate {
         JalaliDate.assertJalaliYearInRange(year);
 
         const equinoxJD = vernalEquinoxJD(jalaliToGregorianYear(year));
-        return equinoxJD >= UNIX_EPOCH_JD
-            ? new Date((equinoxJD - UNIX_EPOCH_JD) * 86400 * 1000)
-            : null; // JS Date cannot represent times before 1970-01-01
+        if (equinoxJD < UNIX_EPOCH_JD) {
+            return null; // Cannot represent dates before 1970-01-01 in JavaScript Date
+        }
+
+        const unixTime = (equinoxJD - UNIX_EPOCH_JD) * MILLISECONDS_PER_DAY;
+        return new Date(unixTime)
     }
 
     /**
@@ -885,21 +916,21 @@ export class JalaliDate {
     // ---------------------------------------------------------------------------
 
     /**
-     * Returns the equivalent proleptic Gregorian date.
-     *
-     * @returns Plain `{ year, month, day }` in the proleptic Gregorian calendar.
-     */
-    toGregorian(): { year: number; month: number; day: number } {
-        return gregorianFromJDN(this.jdn);
-    }
-
-    /**
      * Returns the Jalali date as a plain object.
      *
      * @returns Plain `{ year, month, day }` for this Jalali date.
      */
     toObject(): { year: number; month: number; day: number } {
         return { year: this.year, month: this.month, day: this.day };
+    }
+
+    /**
+     * Returns the equivalent proleptic Gregorian date.
+     *
+     * @returns Plain `{ year, month, day }` in the proleptic Gregorian calendar.
+     */
+    toGregorian(): { year: number; month: number; day: number } {
+        return gregorianFromJDN(this.jdn);
     }
 
     /**
@@ -1157,6 +1188,48 @@ export class JalaliDate {
     isBetween(start: JalaliDate, end: JalaliDate): boolean {
         const thisJDN = this.jdn;
         return thisJDN >= start.jdn && thisJDN <= end.jdn;
+    }
+
+    /**
+     * Returns true if this date and `other` are in the same Jalali year.
+     *
+     * @param other - The date to compare against.
+     * @returns `true` if both dates are in the same year.
+     */
+    isSameYear(other: JalaliDate): boolean {
+        return this.year === other.year;
+    }
+
+    /**
+     * Returns true if this date and `other` are in the same Jalali month.
+     *
+     * @param other - The date to compare against.
+     * @returns `true` if both dates are in the same year and month.
+     */
+    isSameMonth(other: JalaliDate): boolean {
+        return this.year === other.year && this.month === other.month;
+    }
+
+    /**
+     * Returns true if this date and `other` are in the same week.
+     *
+     * Week 1 is the week containing 1 Farvardin. Weeks start on Saturday (6) and end on Friday (5).
+     *
+     * @param other - The date to compare against.
+     * @returns `true` if both dates are in the same year and week.
+     */
+    isSameWeek(other: JalaliDate): boolean {
+        return this.year === other.year && this.weekOfYear === other.weekOfYear;
+    }
+
+    /**
+     * Returns true if this date and `other` are in the same quarter.
+     *
+     * @param other - The date to compare against.
+     * @returns `true` if both dates are in the same year and quarter.
+     */
+    isSameQuarter(other: JalaliDate): boolean {
+        return this.year === other.year && this.quarter === other.quarter;
     }
 
     // ---------------------------------------------------------------------------

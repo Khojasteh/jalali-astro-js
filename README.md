@@ -185,15 +185,44 @@ Throws `RangeError` if the year, month, or day is outside the supported range.
 
 #### `JalaliDate.today()`
 
-Returns today's Jalali date in Tehran civil time.
+Returns today's Jalali date in Tehran civil time (UTC+03:30), based on the current system time.
 
 ```ts
 const today = JalaliDate.today();
 ```
 
+#### `JalaliDate.yesterday()`
+
+Returns yesterday's Jalali date in Tehran civil time (UTC+03:30), based on the current system time.
+
+```ts
+const yesterday = JalaliDate.yesterday();
+```
+
+#### `JalaliDate.tomorrow()`
+
+Returns tomorrow's Jalali date in Tehran civil time (UTC+03:30), based on the current system time.
+
+```ts
+const tomorrow = JalaliDate.tomorrow();
+```
+
+#### `JalaliDate.fromUnixTime(unixTime)`
+
+Creates a JalaliDate from a Unix timestamp (milliseconds since 1970-01-01T00:00:00Z).
+
+The timestamp is interpreted in Tehran civil time (UTC+03:30) to determine the corresponding Jalali date.
+
+```ts
+const today = JalaliDate.fromUnixTime(Date.now());
+const specificDate = JalaliDate.fromUnixTime(1609459200000); // 2021-01-01 00:00:00 UTC
+```
+
 #### `JalaliDate.fromDate(date)`
 
-Creates a Jalali date from a JavaScript `Date`. The instant is interpreted in Tehran civil time before conversion.
+Creates a Jalali date from a JavaScript `Date`.
+
+The `Date` instant is interpreted in Tehran civil time (UTC+03:30) to determine the corresponding Jalali date.
 
 ```ts
 const date = JalaliDate.fromDate(new Date());
@@ -482,6 +511,10 @@ const differentDay = date.withDay(20);      // 1403/05/20
 | `date.isBefore(other)`            | Returns `true` if this date is strictly earlier than `other`.                                                               |
 | `date.isAfter(other)`             | Returns `true` if this date is strictly later than `other`.                                                                 |
 | `date.isBetween(start, end)`      | Returns `true` if this date is between `start` and `end` (inclusive).                                                       |
+| `date.isSameYear(other)`          | Returns `true` if both dates are in the same Jalali year.                                                                   |
+| `date.isSameMonth(other)`         | Returns `true` if both dates are in the same year and month.                                                                |
+| `date.isSameWeek(other)`          | Returns `true` if both dates are in the same year and week (weeks start on Saturday).                                       |
+| `date.isSameQuarter(other)`       | Returns `true` if both dates are in the same year and quarter.                                                              |
 
 ```ts
 const date = new JalaliDate(1403, 5, 15);
@@ -489,6 +522,19 @@ const start = new JalaliDate(1403, 5, 1);
 const end = new JalaliDate(1403, 5, 31);
 
 date.isBetween(start, end); // true
+
+// Check if dates are in the same period
+const date1 = new JalaliDate(1403, 5, 15);
+const date2 = new JalaliDate(1403, 6, 20);
+
+date1.isSameYear(date2);    // true (both in 1403)
+date1.isSameMonth(date2);   // false (different months)
+date1.isSameQuarter(date2); // true (both in Q2: months 4-6)
+
+// Week comparison (weeks start on Saturday)
+const wed = new JalaliDate(1403, 1, 1);  // 1 Farvardin 1403 (Wednesday)
+const sat = wed.startOfWeek();           // Saturday of the same week
+wed.isSameWeek(sat);                     // true
 ```
 
 ### Date differences

@@ -32,51 +32,22 @@ describe('JalaliDate.fromDate', () => {
     });
 });
 
-describe('JalaliDate.fromGregorian', () => {
-    const knownDates: Array<{
-        gregorian: [number, number, number];
-        jalali: [number, number, number];
-    }> = [
-            { gregorian: [2023, 3, 21], jalali: [1402, 1, 1] },
-            { gregorian: [2024, 2, 29], jalali: [1402, 12, 10] },
-            { gregorian: [2024, 3, 19], jalali: [1402, 12, 29] },
-            { gregorian: [2024, 3, 20], jalali: [1403, 1, 1] },
-            { gregorian: [2025, 3, 20], jalali: [1403, 12, 30] },
-            { gregorian: [2025, 3, 21], jalali: [1404, 1, 1] },
-            { gregorian: [2026, 5, 2], jalali: [1405, 2, 12] },
-        ];
+describe('JalaliDate.fromUnixTime', () => {
+    it('uses Tehran civil date, not UTC civil date', () => {
+        const unixTime1 = Date.parse('2024-03-19T20:29:59Z');
+        const date1 = JalaliDate.fromUnixTime(unixTime1);
+        assert.deepEqual(date1.toObject(), { year: 1402, month: 12, day: 29 });
 
-    for (const { gregorian, jalali } of knownDates) {
-        const [gYear, gMonth, gDay] = gregorian;
-        const [year, month, day] = jalali;
+        const unixTime2 = Date.parse('2024-03-19T20:30:00Z');
+        const date2 = JalaliDate.fromUnixTime(unixTime2);
+        assert.deepEqual(date2.toObject(), { year: 1403, month: 1, day: 1 });
+    });
 
-        it(`converts Gregorian ${gYear}-${gMonth}-${gDay} to Jalali ${year}/${month}/${day}`, () => {
-            const date = JalaliDate.fromGregorian(gYear, gMonth, gDay);
-            assert.deepEqual(date.toObject(), { year, month, day });
-        });
-    }
-
-    it('rejects invalid Gregorian dates and years', () => {
-        const invalidDates: Array<[number, number, number]> = [
-            [0, 1, 1],
-            [2024, 0, 1],
-            [2024, 13, 1],
-            [2024, 1, 0],
-            [2024, 1, 32],
-            [2023, 2, 29],
-            [2024, 2, 30],
-            [2024, 4, 31],
-            [JalaliDate.MIN_GREGORIAN_YEAR - 1, 1, 1],
-            [JalaliDate.MAX_GREGORIAN_YEAR + 1, 1, 1],
-        ];
-
-        for (const [year, month, day] of invalidDates) {
-            assert.throws(
-                () => JalaliDate.fromGregorian(year, month, day),
-                RangeError,
-                `Expected fromGregorian(${year}, ${month}, ${day}) to throw`
-            );
-        }
+    it('maps the Unix epoch using Tehran civil time', () => {
+        assert.deepEqual(
+            JalaliDate.fromUnixTime(0).toGregorian(),
+            { year: 1970, month: 1, day: 1 }
+        );
     });
 });
 
@@ -122,6 +93,54 @@ describe('JalaliDate.fromJDN', () => {
 
         assert.throws(() => JalaliDate.fromJDN(min - 1), RangeError);
         assert.throws(() => JalaliDate.fromJDN(max + 1), RangeError);
+    });
+});
+
+describe('JalaliDate.fromGregorian', () => {
+    const knownDates: Array<{
+        gregorian: [number, number, number];
+        jalali: [number, number, number];
+    }> = [
+            { gregorian: [2023, 3, 21], jalali: [1402, 1, 1] },
+            { gregorian: [2024, 2, 29], jalali: [1402, 12, 10] },
+            { gregorian: [2024, 3, 19], jalali: [1402, 12, 29] },
+            { gregorian: [2024, 3, 20], jalali: [1403, 1, 1] },
+            { gregorian: [2025, 3, 20], jalali: [1403, 12, 30] },
+            { gregorian: [2025, 3, 21], jalali: [1404, 1, 1] },
+            { gregorian: [2026, 5, 2], jalali: [1405, 2, 12] },
+        ];
+
+    for (const { gregorian, jalali } of knownDates) {
+        const [gYear, gMonth, gDay] = gregorian;
+        const [year, month, day] = jalali;
+
+        it(`converts Gregorian ${gYear}-${gMonth}-${gDay} to Jalali ${year}/${month}/${day}`, () => {
+            const date = JalaliDate.fromGregorian(gYear, gMonth, gDay);
+            assert.deepEqual(date.toObject(), { year, month, day });
+        });
+    }
+
+    it('rejects invalid Gregorian dates and years', () => {
+        const invalidDates: Array<[number, number, number]> = [
+            [0, 1, 1],
+            [2024, 0, 1],
+            [2024, 13, 1],
+            [2024, 1, 0],
+            [2024, 1, 32],
+            [2023, 2, 29],
+            [2024, 2, 30],
+            [2024, 4, 31],
+            [JalaliDate.MIN_GREGORIAN_YEAR - 1, 1, 1],
+            [JalaliDate.MAX_GREGORIAN_YEAR + 1, 1, 1],
+        ];
+
+        for (const [year, month, day] of invalidDates) {
+            assert.throws(
+                () => JalaliDate.fromGregorian(year, month, day),
+                RangeError,
+                `Expected fromGregorian(${year}, ${month}, ${day}) to throw`
+            );
+        }
     });
 });
 

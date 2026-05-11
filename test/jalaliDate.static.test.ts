@@ -199,3 +199,21 @@ describe('JalaliDate.today', () => {
         );
     });
 });
+
+describe('JalaliDate.yesterday', () => {
+    it('returns the Jalali date for yesterday in Tehran time', () => {
+        const today = JalaliDate.today();
+        const yesterday = today.addDays(-1);
+        const difference = yesterday.differenceInDays(today);
+        assert.ok(difference === 1, `Expected difference between today and yesterday to be 1 day, got ${difference}`);
+    });
+});
+
+describe('JalaliDate.tomorrow', () => {
+    it('returns the Jalali date for tomorrow in Tehran time', () => {
+        const today = JalaliDate.today();
+        const tomorrow = today.addDays(1);
+        const difference = today.differenceInDays(tomorrow);
+        assert.ok(difference === 1, `Expected difference between tomorrow and today to be 1 day, got ${difference}`);
+    });
+});
