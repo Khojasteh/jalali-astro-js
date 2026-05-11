@@ -128,7 +128,10 @@ In years like this, a repeating arithmetic cycle can choose a different Gregoria
 
 ## Module formats
 
-The package ships with both ES module and CommonJS builds.
+The package ships with ES module, CommonJS, and browser (IIFE) builds.
+Full TypeScript declarations are included.
+
+### Node.js and bundlers
 
 ```ts
 // ES module, TypeScript, and modern bundlers
@@ -140,7 +143,31 @@ import { JalaliDate } from 'jalali-astro';
 const { JalaliDate } = require('jalali-astro');
 ```
 
-Full TypeScript declarations are included.
+### Browser usage
+
+**Modern browsers (ES modules):**
+
+```html
+<script type="module">
+  import { JalaliDate } from 'https://esm.sh/jalali-astro';
+
+  const today = JalaliDate.today();
+  console.log(today.format('DDDD، D MMMM YYYY'));
+</script>
+```
+
+**All browsers (IIFE global):**
+
+```html
+<script src="https://unpkg.com/jalali-astro@1.3.0/dist/index.global.js"></script>
+<script>
+  const { JalaliDate } = JalaliAstro;
+
+  const today = JalaliDate.today();
+  document.getElementById('date').textContent =
+    today.format('DDDD، D MMMM YYYY', 'auto');
+</script>
+```
 
 ## Building and testing
 
