@@ -11,9 +11,9 @@
 
 import { vernalEquinoxJD, MEEUS_MIN_YEAR, MEEUS_MAX_YEAR } from './astronomy.js';
 import { gregorianToJDN, gregorianFromJDN, gregorianDaysInMonth, dayOfWeekFromJDN } from './julianDay.js';
-import { toAstronomicalYear, toCalendarYear, jalaliToGregorianYear, gregorianToJalaliYear } from './yearUtils.js';
+import { toAstronomicalYear, toCalendarYear, jalaliToGregorianYear, gregorianToJalaliYear, expandTwoDigitJalaliYear } from './yearUtils.js';
+import { formatInteger, parseInteger } from './persianNumberUtils.js';
 import { nowruzJDN } from './nowruz.js';
-import { PersianNumbers } from './persianNumbers.js';
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -44,6 +44,16 @@ export enum Occurrence {
 }
 
 /**
+ * Named constants for Jalali calendar quarters.
+ */
+export enum Quarter {
+    Spring = 1,
+    Summer = 2,
+    Autumn = 3,
+    Winter = 4
+}
+
+/**
  * Julian Day Number of the Unix epoch (1970-01-01 at noon UTC).
  * Used to convert between Julian Day Numbers and Unix timestamps.
  * JDN 2440587 corresponds to 1970-01-01; the fractional .5 shifts
@@ -62,13 +72,6 @@ const MILLISECONDS_PER_DAY = 86400 * 1000;
 const IRAN_OFFSET_MS = (3 * 60 + 30) * 60 * 1000;
 
 /**
- * Names of the Jalali months in Persian.
- */
-const MONTH_NAMES_FA: ReadonlyArray<string> = [
-    'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
-];
-
-/**
  * Names of the days of the week in Persian, following the JS Date convention:
  * 0=Sunday, 1=Monday, …, 6=Saturday.
  */
@@ -77,20 +80,53 @@ const DOW_NAMES_FA: ReadonlyArray<string> = [
 ];
 
 /**
+ * Names of the Jalali months in Persian.
+ */
+const MONTH_NAMES_FA: ReadonlyArray<string> = [
+    'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+];
+
+/**
+ * Names of the Jalali quarters in Persian.
+ */
+const QUARTER_NAMES_FA: ReadonlyArray<string> = [
+    'بهار', 'تابستان', 'پاییز', 'زمستان'
+];
+
+/**
  * Regular expression to match format tokens in pattern strings.
  */
-const FORMAT_TOKENS = /"[^"]*"|'[^']*'|YYYY|YY|MMMM|MM|M|DDDD|DD|D/gi;
+const FORMAT_TOKENS = /"[^"]*"|'[^']*'|YYYY|YY|MMMM|MM|M|DDDD|DD|D|Q/gi;
+
+/**
+ * Options for {@link JalaliDate.format}.
+ */
+export interface FormatOptions {
+    /**
+     * Controls Right-to-Left Mark (U+200F) insertion:
+     * - `'never'`: Never add RLM (default).
+     * - `'always'`: Always prepend RLM to the result.
+     * - `'auto'`: Add RLM only when the result starts with a Persian digit.
+     */
+    rlm?: 'never' | 'always' | 'auto';
+}
 
 // ---------------------------------------------------------------------------
 // Pattern parsing helpers
 // ---------------------------------------------------------------------------
 
 /**
+ * Information about a single capture group in a compiled pattern, including the type of
+ * date component it represents and the original token from the pattern.
+ */
+type PatternCaptureGroup = { type: 'year' | 'month' | 'day' | 'dayOfWeek' | 'quarter'; token: string };
+
+/**
  * Metadata for a compiled pattern, including the regex and capture group information.
  */
 interface CompiledPattern {
     regex: RegExp;
-    captureGroups: Array<{ type: 'year' | 'month' | 'day'; token: string }>;
+    captureGroups: PatternCaptureGroup[];
 }
 
 /**
@@ -123,7 +159,7 @@ function compilePattern(pattern: string): CompiledPattern {
     };
 
     // Track which component each capture group represents
-    const captureGroups: Array<{ type: 'year' | 'month' | 'day'; token: string }> = [];
+    const captureGroups: PatternCaptureGroup[] = [];
 
     // Build a regular expression from the pattern
     let regexPattern = '';
@@ -166,13 +202,19 @@ function compilePattern(pattern: string): CompiledPattern {
                 regexPattern += '([\\d\u06F0-\u06F9]+)';
                 break;
             case 'DDDD':
-                // Day of week is ignored during parsing
-                regexPattern += '[^\\s\\/\\-]+';
+                // Day of week name is captured and validated against the resulting date
+                captureGroups.push({ type: 'dayOfWeek', token: upperToken });
+                regexPattern += '([^\\s\\/\\-]+)';
                 break;
             case 'DD':
             case 'D':
                 captureGroups.push({ type: 'day', token: upperToken });
                 regexPattern += '([\\d\u06F0-\u06F9]+)';
+                break;
+            case 'Q':
+                // Quarter name is captured and validated against the resulting date
+                captureGroups.push({ type: 'quarter', token: upperToken });
+                regexPattern += '([^\\s\\/\\-]+)';
                 break;
         }
     }
@@ -225,6 +267,15 @@ export class JalaliDate {
      * Maximum supported Gregorian year.
      */
     static readonly MAX_GREGORIAN_YEAR = MEEUS_MAX_YEAR;
+
+    // ---------------------------------------------------------------------------
+    // Static test state
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Test-only override for methods that depend on today's date.
+     */
+    private static testToday: JalaliDate | null = null;
 
     // ---------------------------------------------------------------------------
     // Instance fields
@@ -407,7 +458,7 @@ export class JalaliDate {
      * @returns A `JalaliDate` representing the current civil date in Iran Standard Time.
      */
     static today(): JalaliDate {
-        return JalaliDate.fromUnixTime(Date.now());
+        return JalaliDate.testToday ?? JalaliDate.fromUnixTime(Date.now());
     }
 
     /**
@@ -416,8 +467,7 @@ export class JalaliDate {
      * @returns A `JalaliDate` representing yesterday's civil date in Iran Standard Time.
      */
     static yesterday(): JalaliDate {
-        const yesterdayUnixTime = Date.now() - MILLISECONDS_PER_DAY;
-        return JalaliDate.fromUnixTime(yesterdayUnixTime);
+        return JalaliDate.today().addDays(-1);
     }
 
     /**
@@ -425,8 +475,7 @@ export class JalaliDate {
      * @returns A `JalaliDate` representing tomorrow's civil date in Iran Standard Time.
      */
     static tomorrow(): JalaliDate {
-        const tomorrowUnixTime = Date.now() + MILLISECONDS_PER_DAY;
-        return JalaliDate.fromUnixTime(tomorrowUnixTime);
+        return JalaliDate.today().addDays(1);
     }
 
     /**
@@ -640,11 +689,16 @@ export class JalaliDate {
      * - `D`: Day of month
      * - `DD`: Day of month, zero-padded to 2 digits
      * - `DDDD`: Full day of week name in Persian
+     * - `Q`: Quarter name in Persian
      *
-     * Quoted text in single or double quotes must match verbatim (without the quotes).
-     * Persian-Indic digits are accepted alongside Latin digits.
-     * Bidirectional control characters (RLM, LRM, etc.) are automatically stripped from both
-     * the input string and pattern, and leading/trailing whitespace is trimmed before parsing.
+     * The parser is lenient in the following ways:
+     * - Persian-Indic digits are accepted alongside Latin digits.
+     * - Leading and trailing whitespace characters in both pattern and input string are ignored.
+     * - Bidirectional control characters (RLM, LRM, etc.) are automatically stripped from both
+     *   pattern and input string.
+     * - Quoted text in single or double quotes must match verbatim (without the quotes).
+     * - Day of week (`DDDD`) and quarter (`Q`) tokens are validated against the resulting date
+     *   if present, but do not affect parsing otherwise.
      *
      * @param str     - The input string.
      * @param pattern - Format pattern. Defaults to `'YYYY/M/D'`.
@@ -665,6 +719,8 @@ export class JalaliDate {
         let year: number | undefined;
         let month: number | undefined;
         let day: number | undefined;
+        let dayOfWeekName: string | undefined;
+        let quarterName: string | undefined;
 
         for (let i = 0; i < captureGroups.length; i++) {
             const group = captureGroups[i];
@@ -674,25 +730,34 @@ export class JalaliDate {
                 continue;
             }
 
-            if (group.type === 'year') {
-                if (group.token === 'YY') {
-                    const twoDigitYear = PersianNumbers.parse(value);
-                    year = twoDigitYear >= 50 ? 1300 + twoDigitYear : 1400 + twoDigitYear;
-                } else {
-                    year = PersianNumbers.parse(value);
-                }
-            } else if (group.type === 'month') {
-                if (group.token === 'MMMM') {
-                    const monthIndex = MONTH_NAMES_FA.indexOf(value);
-                    if (monthIndex === -1) {
-                        throw new Error(`Unrecognized month name: "${value}".`);
+            switch (group.type) {
+                case 'year':
+                    if (group.token === 'YY') {
+                        year = expandTwoDigitJalaliYear(parseInteger(value), JalaliDate.today().year);
+                    } else {
+                        year = parseInteger(value);
                     }
-                    month = monthIndex + 1;
-                } else {
-                    month = PersianNumbers.parse(value);
-                }
-            } else if (group.type === 'day') {
-                day = PersianNumbers.parse(value);
+                    break;
+                case 'month':
+                    if (group.token === 'MMMM') {
+                        const monthIndex = MONTH_NAMES_FA.indexOf(value);
+                        if (monthIndex === -1) {
+                            throw new Error(`Unrecognized month name: "${value}".`);
+                        }
+                        month = monthIndex + 1;
+                    } else {
+                        month = parseInteger(value);
+                    }
+                    break;
+                case 'day':
+                    day = parseInteger(value);
+                    break;
+                case 'dayOfWeek':
+                    dayOfWeekName = value;
+                    break;
+                case 'quarter':
+                    quarterName = value;
+                    break;
             }
         }
 
@@ -700,7 +765,17 @@ export class JalaliDate {
             throw new Error(`Failed to extract date components from "${str}" with pattern "${pattern}".`);
         }
 
-        return new JalaliDate(year, month, day);
+        const result = new JalaliDate(year, month, day);
+
+        if (dayOfWeekName !== undefined && dayOfWeekName !== result.dayOfWeekName) {
+            throw new Error(`Day of week "${dayOfWeekName}" does not match the date ${result} (expected "${result.dayOfWeekName}").`);
+        }
+
+        if (quarterName !== undefined && quarterName !== result.quarterName) {
+            throw new Error(`Quarter "${quarterName}" does not match the date ${result} (expected "${result.quarterName}").`);
+        }
+
+        return result;
     }
 
     // ---------------------------------------------------------------------------
@@ -804,6 +879,24 @@ export class JalaliDate {
     }
 
     // ---------------------------------------------------------------------------
+    // Static test helpers
+    // ---------------------------------------------------------------------------
+
+    /**
+     * Sets a fixed Jalali date for methods that depend on today's date.
+     *
+     * This method allows tests to override the current date returned by {@link today()},
+     * {@link yesterday()}, and {@link tomorrow()} for deterministic testing.
+     *
+     * Passing `null` clears the override and restores the real current date.
+     *
+     * @param testToday - Fixed Jalali date to use as today, or `null` to clear it.
+     */
+    static setTestToday(testToday: JalaliDate | null): void {
+        JalaliDate.testToday = testToday;
+    }
+
+    // ---------------------------------------------------------------------------
     // Computed properties
     // ---------------------------------------------------------------------------
 
@@ -881,21 +974,21 @@ export class JalaliDate {
     }
 
     /**
-     * Persian name of the month.
-     *
-     * @returns The Persian name of the month (e.g., 'فروردین', 'اردیبهشت', etc.).
-     */
-    get monthName(): string {
-        return MONTH_NAMES_FA[this.month - 1]!;
-    }
-
-    /**
      * Persian name of the day of week.
      *
      * @returns The Persian name of the day (e.g., 'شنبه', 'یکشنبه', etc.).
      */
     get dayOfWeekName(): string {
         return DOW_NAMES_FA[this.dayOfWeek]!;
+    }
+
+    /**
+     * Persian name of the month.
+     *
+     * @returns The Persian name of the month (e.g., 'فروردین', 'اردیبهشت', etc.).
+     */
+    get monthName(): string {
+        return MONTH_NAMES_FA[this.month - 1]!;
     }
 
     /**
@@ -911,9 +1004,27 @@ export class JalaliDate {
         return Math.ceil(this.month / 3);
     }
 
+    /**
+     * Persian name of the quarter.
+     *
+     * @returns The Persian name of the quarter (e.g., 'بهار', 'تابستان', etc.).
+     */
+    get quarterName(): string {
+        return QUARTER_NAMES_FA[this.quarter - 1]!;
+    }
+
     // ---------------------------------------------------------------------------
     // Conversion
     // ---------------------------------------------------------------------------
+
+    /**
+     * Returns the Jalali date as an array of `[year, month, day]`.
+     *
+     * @returns An array containing the year, month, and day of this Jalali date.
+     */
+    toArray(): [year: number, month: number, day: number] {
+        return [this.year, this.month, this.day];
+    }
 
     /**
      * Returns the Jalali date as a plain object.
@@ -1301,17 +1412,23 @@ export class JalaliDate {
      * - `D`: Day of month
      * - `DD`: Day of month, zero-padded to 2 digits
      * - `DDDD`: Full day of week name in Persian
+     * - `Q`: Quarter name in Persian
      *
      * Quoted text in single or double quotes is output verbatim (without the quotes).
      *
      * @param pattern - Format string.
-     * @param rlm - Controls Right-to-Left Mark insertion:
-     *              - `'never'`: Never add RLM (default)
-     *              - `'always'`: Always prepend RLM to the result
-     *              - `'auto'`: Add RLM only when result starts with a Persian digit
+     * @param options - Formatting options object.
+     * @param options.rlm - Controls Right-to-Left Mark (U+200F) insertion:
+     *   - `'never'`: Never add RLM (default).
+     *   - `'always'`: Always prepend RLM to the result.
+     *   - `'auto'`: Add RLM only when the result starts with a Persian digit.
      * @returns Formatted date string.
      */
-    format(pattern: string, rlm: 'never' | 'always' | 'auto' = 'never'): string {
+    format(pattern: string, options?: FormatOptions | 'never' | 'always' | 'auto'): string {
+        const rlm: 'never' | 'always' | 'auto' =
+            typeof options === 'string' ? options :
+                options?.rlm ?? 'never';
+
         const result = pattern.replace(FORMAT_TOKENS, (token): string => {
             if (token[0] === '"' || token[0] === "'") {
                 return token.slice(1, -1);
@@ -1319,21 +1436,23 @@ export class JalaliDate {
 
             switch (token.toUpperCase()) {
                 case 'YYYY':
-                    return PersianNumbers.format(this.year, 4);
+                    return formatInteger(this.year, 4);
                 case 'YY':
-                    return PersianNumbers.format(this.year % 100, 2);
+                    return formatInteger(this.year % 100, 2);
                 case 'MMMM':
                     return this.monthName;
                 case 'MM':
-                    return PersianNumbers.format(this.month, 2);
+                    return formatInteger(this.month, 2);
                 case 'M':
-                    return PersianNumbers.format(this.month);
+                    return formatInteger(this.month);
                 case 'DDDD':
                     return this.dayOfWeekName;
                 case 'DD':
-                    return PersianNumbers.format(this.day, 2);
+                    return formatInteger(this.day, 2);
                 case 'D':
-                    return PersianNumbers.format(this.day);
+                    return formatInteger(this.day);
+                case 'Q':
+                    return this.quarterName;
                 default:
                     return token;
             }
