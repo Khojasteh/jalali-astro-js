@@ -47,6 +47,31 @@ describe('toGregorian', () => {
     });
 });
 
+describe('toArray', () => {
+    it('returns [year, month, day] for a typical date', () => {
+        const d = new JalaliDate(1402, 3, 10);
+        assert.deepEqual(d.toArray(), [1402, 3, 10]);
+    });
+
+    it('returns correct arrays for start and end of year', () => {
+        const first = new JalaliDate(1400, 1, 1);
+        assert.deepEqual(first.toArray(), [1400, 1, 1]);
+
+        const last = first.endOfYear();
+        assert.deepEqual(last.toArray(), [1400, 12, last.day]);
+    });
+
+    it('returned array is a copy and mutating it does not change the instance', () => {
+        const d = new JalaliDate(1402, 4, 5);
+        const arr = d.toArray();
+        arr[0] = 9999;
+        arr[1] = 12;
+        arr[2] = 31;
+
+        assert.deepEqual(d.toArray(), [1402, 4, 5]);
+    });
+});
+
 describe('toObject', () => {
     it('returns a plain object with year, month, and day', () => {
         const date = new JalaliDate(1402, 6, 15);

@@ -6,7 +6,13 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { toAstronomicalYear, toCalendarYear, jalaliToGregorianYear, gregorianToJalaliYear } from '../src/yearUtils.ts';
+import {
+    toAstronomicalYear,
+    toCalendarYear,
+    jalaliToGregorianYear,
+    gregorianToJalaliYear,
+    expandTwoDigitJalaliYear
+} from '../src/yearUtils.ts';
 
 describe('toAstronomicalYear', () => {
     it('leaves positive years unchanged', () => {
@@ -136,4 +142,47 @@ describe('jalaliToGregorianYear / gregorianToJalaliYear round-trip', () => {
             assert.equal(gregorianToJalaliYear(jalaliToGregorianYear(y)), y);
         });
     }
+});
+
+describe('expandTwoDigitJalaliYear', () => {
+    it('chooses the nearest matching full year around a positive reference Jalali year', () => {
+        assert.equal(expandTwoDigitJalaliYear(0, 1410), 1400);
+        assert.equal(expandTwoDigitJalaliYear(5, 1410), 1405);
+        assert.equal(expandTwoDigitJalaliYear(50, 1410), 1450);
+        assert.equal(expandTwoDigitJalaliYear(95, 1410), 1395);
+
+        assert.equal(expandTwoDigitJalaliYear(0, 1590), 1600);
+        assert.equal(expandTwoDigitJalaliYear(5, 1590), 1605);
+        assert.equal(expandTwoDigitJalaliYear(50, 1590), 1550);
+        assert.equal(expandTwoDigitJalaliYear(95, 1590), 1595);
+    });
+
+    it('chooses the nearest matching full year around a negative reference Jalali year', () => {
+        assert.equal(expandTwoDigitJalaliYear(0, -1410), -1400);
+        assert.equal(expandTwoDigitJalaliYear(5, -1410), -1405);
+        assert.equal(expandTwoDigitJalaliYear(50, -1410), -1450);
+        assert.equal(expandTwoDigitJalaliYear(95, -1410), -1395);
+
+        assert.equal(expandTwoDigitJalaliYear(0, -1590), -1600);
+        assert.equal(expandTwoDigitJalaliYear(5, -1590), -1605);
+        assert.equal(expandTwoDigitJalaliYear(50, -1590), -1550);
+        assert.equal(expandTwoDigitJalaliYear(95, -1590), -1595);
+    });
+
+    it('never returns year zero near the calendar era boundary', () => {
+        assert.notEqual(expandTwoDigitJalaliYear(0, -1), 0);
+        assert.notEqual(expandTwoDigitJalaliYear(0, 1), 0);
+    });
+
+    it('rejects values outside the two-digit range', () => {
+        for (const year of [-1, 100, 1405, 1.5, NaN]) {
+            assert.throws(() => expandTwoDigitJalaliYear(year, 1405), RangeError);
+        }
+    });
+
+    it('rejects invalid reference years', () => {
+        for (const referenceYear of [0, 1405.5, NaN]) {
+            assert.throws(() => expandTwoDigitJalaliYear(10, referenceYear), RangeError);
+        }
+    });
 });

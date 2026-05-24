@@ -1,14 +1,14 @@
 /**
- * Tests for src/persianNumbers.ts
+ * Tests for src/persianNumberUtils.ts
  *
  * Verifies formatting and parsing of Persian-Indic integer strings.
  */
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { PersianNumbers } from '../src/persianNumbers.ts';
+import { formatInteger, parseInteger } from '../src/persianNumberUtils.ts';
 
-describe('PersianNumbers.format', () => {
+describe('formatInteger', () => {
     const cases: Array<{
         value: number;
         expected: string;
@@ -38,7 +38,7 @@ describe('PersianNumbers.format', () => {
     for (const { value, minDigits, expected } of cases) {
         it(`formats ${value}${minDigits === undefined ? '' : ` with minDigits ${minDigits}`} as "${expected}"`, () => {
             assert.equal(
-                PersianNumbers.format(value, minDigits),
+                formatInteger(value, minDigits),
                 expected
             );
         });
@@ -55,15 +55,33 @@ describe('PersianNumbers.format', () => {
 
         for (const value of invalidValues) {
             assert.throws(
-                () => PersianNumbers.format(value),
+                () => formatInteger(value),
                 Error,
-                `Expected format(${value}) to throw`
+                `Expected formatInteger(${value}) to throw`
+            );
+        }
+    });
+
+    it('throws for non-integer or negative minDigits', () => {
+        const invalidMinDigits = [
+            1.5,
+            -1,
+            NaN,
+            Infinity,
+            -Infinity,
+        ];
+
+        for (const minDigits of invalidMinDigits) {
+            assert.throws(
+                () => formatInteger(42, minDigits),
+                Error,
+                `Expected formatInteger(42, ${minDigits}) to throw`
             );
         }
     });
 });
 
-describe('PersianNumbers.parse', () => {
+describe('parseInteger', () => {
     const cases: Array<{
         input: string;
         expected: number;
@@ -110,7 +128,7 @@ describe('PersianNumbers.parse', () => {
     for (const { input, expected } of cases) {
         it(`parses "${input}" as ${expected}`, () => {
             assert.equal(
-                PersianNumbers.parse(input),
+                parseInteger(input),
                 expected
             );
         });
@@ -128,9 +146,9 @@ describe('PersianNumbers.parse', () => {
 
         for (const input of invalidInputs) {
             assert.throws(
-                () => PersianNumbers.parse(input),
+                () => parseInteger(input),
                 Error,
-                `Expected parse(${JSON.stringify(input)}) to throw`
+                `Expected parseInteger(${JSON.stringify(input)}) to throw`
             );
         }
     });
@@ -147,9 +165,9 @@ describe('PersianNumbers.parse', () => {
 
         for (const input of invalidInputs) {
             assert.throws(
-                () => PersianNumbers.parse(input),
+                () => parseInteger(input),
                 Error,
-                `Expected parse(${JSON.stringify(input)}) to throw`
+                `Expected parseInteger(${JSON.stringify(input)}) to throw`
             );
         }
     });
@@ -173,15 +191,15 @@ describe('PersianNumbers.parse', () => {
 
         for (const input of invalidInputs) {
             assert.throws(
-                () => PersianNumbers.parse(input),
+                () => parseInteger(input),
                 Error,
-                `Expected parse(${JSON.stringify(input)}) to throw`
+                `Expected parseInteger(${JSON.stringify(input)}) to throw`
             );
         }
     });
 });
 
-describe('PersianNumbers format/parse round-trip', () => {
+describe('formatInteger/parseInteger round-trip', () => {
     const values = [
         0,
         1,
@@ -201,19 +219,19 @@ describe('PersianNumbers format/parse round-trip', () => {
     for (const value of values) {
         it(`round-trips ${value}`, () => {
             assert.equal(
-                PersianNumbers.parse(PersianNumbers.format(value)),
+                parseInteger(formatInteger(value)),
                 value
             );
         });
     }
 
     it('round-trips padded positive values', () => {
-        assert.equal(PersianNumbers.parse(PersianNumbers.format(7, 3)), 7);
-        assert.equal(PersianNumbers.parse(PersianNumbers.format(42, 5)), 42);
+        assert.equal(parseInteger(formatInteger(7, 3)), 7);
+        assert.equal(parseInteger(formatInteger(42, 5)), 42);
     });
 
     it('round-trips padded negative values', () => {
-        assert.equal(PersianNumbers.parse(PersianNumbers.format(-7, 3)), -7);
-        assert.equal(PersianNumbers.parse(PersianNumbers.format(-42, 5)), -42);
+        assert.equal(parseInteger(formatInteger(-7, 3)), -7);
+        assert.equal(parseInteger(formatInteger(-42, 5)), -42);
     });
 });

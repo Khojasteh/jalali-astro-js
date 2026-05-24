@@ -4,7 +4,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { JalaliDate } from '../src/jalaliDate.ts';
+import { JalaliDate, DayOfWeek, Quarter } from '../src/jalaliDate.ts';
 import { gregorianToJDN } from '../src/julianDay.ts';
 
 describe('jdn', () => {
@@ -79,14 +79,14 @@ describe('dayOfYear', () => {
 });
 
 describe('dayOfWeek', () => {
-    const cases: Array<[JalaliDate, number]> = [
-        [new JalaliDate(1403, 1, 1), 3],
-        [new JalaliDate(1403, 1, 2), 4],
-        [new JalaliDate(1403, 1, 3), 5],
-        [new JalaliDate(1403, 1, 4), 6],
-        [new JalaliDate(1403, 1, 5), 0],
-        [new JalaliDate(1403, 1, 6), 1],
-        [new JalaliDate(1403, 1, 7), 2],
+    const cases: Array<[JalaliDate, DayOfWeek]> = [
+        [new JalaliDate(1403, 1, 1), DayOfWeek.Wednesday],
+        [new JalaliDate(1403, 1, 2), DayOfWeek.Thursday],
+        [new JalaliDate(1403, 1, 3), DayOfWeek.Friday],
+        [new JalaliDate(1403, 1, 4), DayOfWeek.Saturday],
+        [new JalaliDate(1403, 1, 5), DayOfWeek.Sunday],
+        [new JalaliDate(1403, 1, 6), DayOfWeek.Monday],
+        [new JalaliDate(1403, 1, 7), DayOfWeek.Tuesday],
     ];
 
     for (const [date, expected] of cases) {
@@ -162,10 +162,36 @@ describe('monthName', () => {
 });
 
 describe('quarter', () => {
-    for (let month = 1; month <= 12; month++) {
+    const cases: Array<[number, Quarter]> = [
+        [1, Quarter.Spring],
+        [2, Quarter.Spring],
+        [3, Quarter.Spring],
+        [4, Quarter.Summer],
+        [5, Quarter.Summer],
+        [6, Quarter.Summer],
+        [7, Quarter.Autumn],
+        [8, Quarter.Autumn],
+        [9, Quarter.Autumn],
+        [10, Quarter.Winter],
+        [11, Quarter.Winter],
+        [12, Quarter.Winter],
+    ];
+
+    for (const [month, expected] of cases) {
         it(`month ${month} has correct quarter`, () => {
             const date = new JalaliDate(1403, month, 1);
-            assert.equal(date.quarter, Math.ceil(month / 3));
+            assert.equal(date.quarter, expected);
+        });
+    }
+});
+
+describe('quarterName', () => {
+    const quarters = ['بهار', 'تابستان', 'پاییز', 'زمستان'];
+    for (let month = 1; month <= 12; month++) {
+        it(`month ${month} has correct quarter name`, () => {
+            const date = new JalaliDate(1403, month, 1);
+            const expected = quarters[Math.ceil(month / 3) - 1];
+            assert.equal(date.quarterName, expected);
         });
     }
 });

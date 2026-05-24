@@ -158,14 +158,21 @@ const { JalaliDate } = require('jalali-astro');
 
 **All browsers (IIFE global):**
 
+A minified browser bundle is available for CDN/production use (`dist/index.min.global.js`). The unminified IIFE build (`dist/index.global.js`) is also available for debugging or local inclusion. Source maps are published alongside the minified bundle to aid debugging.
+
 ```html
-<script src="https://unpkg.com/jalali-astro@1.3.0/dist/index.global.js"></script>
+<!-- Production (minified) -->
+<script src="https://unpkg.com/jalali-astro/dist/index.min.global.js"></script>
+
+<!-- Or the unminified IIFE for debugging -->
+<script src="https://unpkg.com/jalali-astro/dist/index.global.js"></script>
+
 <script>
   const { JalaliDate } = JalaliAstro;
 
   const today = JalaliDate.today();
-  document.getElementById('date').textContent =
-    today.format('DDDD، D MMMM YYYY', 'auto');
+  document.getElementById('current-date').textContent =
+    today.format('DDDD، D MMMM YYYY', { rlm: 'auto' });
 </script>
 ```
 
@@ -192,7 +199,7 @@ For contemporary years, the resulting equinox times are typically close enough f
 Immutable value object representing a Jalali calendar date.
 
 ```ts
-import { JalaliDate, DayOfWeek, Occurrence } from 'jalali-astro';
+import { JalaliDate, DayOfWeek, Occurrence, Quarter } from 'jalali-astro';
 ```
 
 ### Constructor
@@ -349,20 +356,21 @@ Supported tokens in the pattern are:
 | `D`    | Day of month             |
 | `DD`   | Zero-padded day of month |
 | `DDDD` | Persian weekday name     |
+| `Q`    | Persian quarter name     |
 
 The parser follows these rules:
 - Both Persian and Latin digits are accepted in the input string for numeric fields.
 - Quoted text in single or double quotes is matched literally.
-- Day of week names are parsed but ignored for validation, since they can be ambiguous or optional in many contexts.
+- Day of week (`DDDD`) and quarter (`Q`) names are validated against the resulting date when present.
 - Bidirectional control characters (RLM, LRM, etc.) are automatically stripped from both the input string and pattern.
-- Leading and trailing whitespace in the input string is ignored.
+- Leading and trailing whitespace in both the input string and pattern is ignored.
 
 ```ts
 const date = JalaliDate.parse('جمعه ۱ فروردین ۱۴۰۴', 'DDDD D MMMM YYYY');
 console.log(date.toString()); // "1404/01/01"
 ```
 
-Throws `Error` if the input string doesn't match the pattern or contains invalid month/day names.
+Throws `Error` if the input string doesn't match the pattern, contains invalid names, or includes a weekday or quarter that does not match the parsed date.
 
 Throws `RangeError` if the resulting date is invalid or out of supported range.
 
@@ -382,16 +390,23 @@ JalaliDate.isValidDate(year: number, month: number, day: number): boolean
 JalaliDate.isLeapYear(year: number): boolean
 JalaliDate.daysInMonth(year: number, month: number): number
 JalaliDate.daysInYear(year: number): number
-JalaliDate.vernalEquinox(year: number): Date
+JalaliDate.vernalEquinox(year: number): Date | null
 JalaliDate.age(birthDate: JalaliDate, referenceDate?: JalaliDate): number
 ```
 
 ```ts
 if (JalaliDate.isValidDate(1403, 12, 30)) {
   const date = new JalaliDate(1403, 12, 30);
+  console.log(date.format('Q YYYY')); // "زمستان ۱۴۰۳"
 }
 
-// Calculate age
+const equinox = JalaliDate.vernalEquinox(1404);
+if (equinox !== null) {
+    console.log(equinox.toISOString()); // e.g., "2025-03-20T09:45:00.000Z"
+} else {
+    console.log('JS Date does not support the year of the equinox calculation.');
+}
+
 const birthDate = new JalaliDate(1380, 5, 15);
 const currentAge = JalaliDate.age(birthDate); // Age as of today
 const ageAtDate = JalaliDate.age(birthDate, new JalaliDate(1403, 5, 15)); // Age at specific date
@@ -411,9 +426,9 @@ const ageAtDate = JalaliDate.age(birthDate, new JalaliDate(1403, 5, 15)); // Age
 | Property             | Description                                                                          |
 | -------------------- | ------------------------------------------------------------------------------------ |
 | `date.year`          | Jalali year.                                                                         |
-| `date.quarter`       | Quarter of the year from `1` to `4`                                                  |
 | `date.month`         | Jalali month, from `1` to `12`.                                                      |
 | `date.day`           | Jalali day of month.                                                                 |
+| `date.quarter`       | Quarter of the year: `Quarter.Spring`, `Quarter.Summer`, `Quarter.Autumn`, or `Quarter.Winter`. |
 | `date.jdn`           | Julian Day Number for the date.                                                      |
 | `date.weekOfYear`    | 1-based week number. Week 1 contains 1 Farvardin.                                    |
 | `date.weekOfMonth`   | 1-based week number of the month. Week 1 contains day 1.                             |
@@ -421,12 +436,12 @@ const ageAtDate = JalaliDate.age(birthDate, new JalaliDate(1403, 5, 15)); // Age
 | `date.dayOfWeek`     | Day of week using the JavaScript `Date` convention: `0 = Sunday`, …, `6 = Saturday`. |
 | `date.monthName`     | Persian name of the month (e.g., 'فروردین', 'اردیبهشت', etc.).                      |
 | `date.dayOfWeekName` | Persian name of the day (e.g., 'شنبه', 'یکشنبه', etc.).                             |
+| `date.quarterName`   | Persian name of the quarter (e.g., 'بهار', 'تابستان', etc.).                        |
 | `date.isLeapYear`    | Whether the date's year is a leap year.                                              |
 | `date.daysInMonth`   | Number of days in the date's month.                                                  |
 | `date.daysInYear`    | Number of days in the date's year.                                                   |
 
 ### Conversion
-
 #### `date.toGregorian()`
 
 Returns the equivalent proleptic Gregorian date.
@@ -434,6 +449,15 @@ Returns the equivalent proleptic Gregorian date.
 ```ts
 const gregorian = date.toGregorian();
 // { year: 2025, month: 3, day: 21 }
+```
+
+#### `date.toArray()`
+
+Returns the Jalali date as an array of `[year, month, day]`.
+
+```ts
+const arr = date.toArray();
+// [1404, 1, 1]
 ```
 
 #### `date.toObject()`
@@ -589,7 +613,7 @@ date2.differenceInDays(date1);   // Negative number (past)
 
 ### Formatting and serialization
 
-#### `date.format(pattern, rlm?)`
+#### `date.format(pattern, options?)`
 
 Formats the date using Persian month names, Persian weekday names, and Persian-Indic digits for numeric fields.
 
@@ -605,18 +629,26 @@ Supported tokens in the pattern are:
 | `D`    | Day of month             |
 | `DD`   | Zero-padded day of month |
 | `DDDD` | Persian weekday name     |
+| `Q`    | Persian quarter name     |
 
-The `rlm` parameter controls Right-to-Left Mark insertion:
-- `'never'` (default): Never add RLM
-- `'always'`: Always prepend RLM to the result
-- `'auto'`: Add RLM only when the result starts with a Persian digit
+The optional `options` object supports a single property:
+
+- **`rlm`** — Controls insertion of the Right-to-Left Mark (U+200F):
+  - **`'never'`** — Do not add an RLM (default).
+  - **`'always'`** — Always prepend an RLM to the formatted string.
+  - **`'auto'`** — Prepend an RLM only when the formatted result begins with a Persian digit.
+
+The RLM is important for correct display of bidirectional text when the formatted date starts with a Persian digit, ensuring that the date is rendered in the proper right-to-left context.
 
 ```ts
 date.format('DDDD D MMMM YYYY');
 // "جمعه ۱ فروردین ۱۴۰۴"
 
+date.format('Q YYYY');
+// "بهار ۱۴۰۴"
+
 // With RLM (Right-to-Left Mark) for proper bidirectional text display
-date.format('D MMMM YYYY', 'auto');
+date.format('D MMMM YYYY', { rlm: 'auto' });
 // "‏۱۴ اردیبهشت ۱۴۰۵" (with RLM prefix for correct RTL display)
 ```
 
@@ -634,6 +666,18 @@ Serializes the date as `"YYYY/MM/DD"`, matching `date.toString()`.
 
 ```ts
 JSON.stringify(date); // "\"1404/01/01\""
+```
+
+### Testing helpers
+
+#### `JalaliDate.setTestToday(testToday)`
+
+Sets a fixed Jalali date for methods that depend on today's date. Pass `null` to restore the real current date.
+
+```ts
+JalaliDate.setTestToday(new JalaliDate(1405, 3, 3));
+const today = JalaliDate.today(); // 1405/03/03
+JalaliDate.setTestToday(null);
 ```
 
 ## License

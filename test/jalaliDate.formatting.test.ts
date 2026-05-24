@@ -19,6 +19,7 @@ describe('format', () => {
         ['D', '۵'],
         ['DD', '۰۵'],
         ['DDDD', dayName],
+        ['Q', 'تابستان'],
         ['YYYY/MM/DD', '۱۴۰۲/۰۶/۰۵'],
         ['DDDD، D MMMM YYYY', `${dayName}، ۵ شهریور ۱۴۰۲`],
         ['"Year: "YYYY', 'Year: ۱۴۰۲'],
@@ -31,6 +32,14 @@ describe('format', () => {
             assert.equal(date.format(pattern), expected);
         });
     }
+
+    it('formats all Persian quarter names', () => {
+        const quarterNames = ['بهار', 'تابستان', 'پاییز', 'زمستان'];
+        const quarterMonths = [1, 4, 7, 10];
+        for (let i = 0; i < 4; i++) {
+            assert.equal(new JalaliDate(1402, quarterMonths[i]!, 1).format('Q'), quarterNames[i]);
+        }
+    });
 
     it('formats all Persian month names', () => {
         const monthNames = [
@@ -55,17 +64,24 @@ describe('format RLM option', () => {
     it('does not add RLM by default or with "never"', () => {
         assert.equal(date.format('D MMMM YYYY'), '۵ شهریور ۱۴۰۲');
         assert.equal(date.format('D MMMM YYYY', 'never'), '۵ شهریور ۱۴۰۲');
+        assert.equal(date.format('D MMMM YYYY', { rlm: 'never' }), '۵ شهریور ۱۴۰۲');
+        assert.equal(date.format('D MMMM YYYY', {}), '۵ شهریور ۱۴۰۲');
     });
 
     it('always adds RLM with "always"', () => {
         assert.equal(date.format('D MMMM YYYY', 'always'), '\u200F۵ شهریور ۱۴۰۲');
         assert.equal(date.format('DDDD D MMMM YYYY', 'always'), `\u200F${dayName} ۵ شهریور ۱۴۰۲`);
+        assert.equal(date.format('D MMMM YYYY', { rlm: 'always' }), '\u200F۵ شهریور ۱۴۰۲');
+        assert.equal(date.format('DDDD D MMMM YYYY', { rlm: 'always' }), `\u200F${dayName} ۵ شهریور ۱۴۰۲`);
     });
 
     it('adds RLM automatically only when formatted text starts with a Persian digit', () => {
         assert.equal(date.format('YYYY/MM/DD', 'auto'), '\u200F۱۴۰۲/۰۶/۰۵');
         assert.equal(date.format('D MMMM YYYY', 'auto'), '\u200F۵ شهریور ۱۴۰۲');
         assert.equal(date.format('DDDD D MMMM YYYY', 'auto'), `${dayName} ۵ شهریور ۱۴۰۲`);
+        assert.equal(date.format('YYYY/MM/DD', { rlm: 'auto' }), '\u200F۱۴۰۲/۰۶/۰۵');
+        assert.equal(date.format('D MMMM YYYY', { rlm: 'auto' }), '\u200F۵ شهریور ۱۴۰۲');
+        assert.equal(date.format('DDDD D MMMM YYYY', { rlm: 'auto' }), `${dayName} ۵ شهریور ۱۴۰۲`);
     });
 });
 

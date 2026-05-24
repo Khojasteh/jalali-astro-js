@@ -217,3 +217,27 @@ describe('JalaliDate.tomorrow', () => {
         assert.ok(difference === 1, `Expected difference between tomorrow and today to be 1 day, got ${difference}`);
     });
 });
+
+describe('JalaliDate.setTestToday', () => {
+    it('sets and clears the date used by today', () => {
+        const testToday = new JalaliDate(1405, 3, 3);
+        JalaliDate.setTestToday(testToday);
+
+        try {
+            assert.ok(JalaliDate.today().equals(testToday));
+        } finally {
+            JalaliDate.setTestToday(null);
+        }
+    });
+
+    it('affects relative current-date helpers', () => {
+        JalaliDate.setTestToday(new JalaliDate(1405, 1, 1));
+
+        try {
+            assert.deepEqual(JalaliDate.yesterday().toObject(), { year: 1404, month: 12, day: 29 });
+            assert.deepEqual(JalaliDate.tomorrow().toObject(), { year: 1405, month: 1, day: 2 });
+        } finally {
+            JalaliDate.setTestToday(null);
+        }
+    });
+});
