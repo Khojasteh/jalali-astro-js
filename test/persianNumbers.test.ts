@@ -6,7 +6,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatInteger, parseInteger } from '../src/persianNumberUtils.ts';
+import { formatInteger, parseInteger } from '../src/persianNumbers.ts';
 
 describe('formatInteger', () => {
     const cases: Array<{

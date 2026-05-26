@@ -3,15 +3,17 @@
  * Implements the algorithm from Jean Meeus, "Astronomical Algorithms", Chapter 27.
  */
 
-/**
- * Minimum Gregorian year supported by the Meeus equinox algorithm.
- */
-export const MEEUS_MIN_YEAR = -1000;
+import { toAstronomicalYear, toCalendarYear } from './yearNumbering.ts';
 
 /**
- * Maximum Gregorian year supported by the Meeus equinox algorithm.
+ * Minimum proleptic Gregorian year supported by the Meeus equinox algorithm (1001 BCE).
  */
-export const MEEUS_MAX_YEAR = 3000;
+export const MEEUS_MIN_YEAR = toCalendarYear(-1000);
+
+/**
+ * Maximum proleptic Gregorian year supported by the Meeus equinox algorithm (3000 CE).
+ */
+export const MEEUS_MAX_YEAR = toCalendarYear(3000);
 
 /**
  * Calculates the difference between Terrestrial Time (TT) and Universal Time (UT)
@@ -137,24 +139,28 @@ const DEG_TO_RAD = Math.PI / 180;
 const J2000_JD = 2451545.0;
 
 /**
- * Calculates the Julian Day of the vernal equinox for a given Gregorian year,
- * expressed in Universal Time (UT).
+ * Calculates the Julian Day of the vernal equinox for a given Gregorian year.
  *
- * @param gregorianYear - The Gregorian year (integer; uses astronomical year numbering,
- *                        where year 0 = 1 BCE, year −1 = 2 BCE, etc.).
- * @returns The Julian Day Number of the vernal equinox instant, in UT (fractional JD).
- * @throws {RangeError} If the year is outside [{@link MEEUS_MIN_YEAR}, {@link MEEUS_MAX_YEAR}].
+ * @param gregorianYear - The Gregorian year.
+ * @returns The Julian Day of the vernal equinox for the given year.
+ * @throws {RangeError} If the year is zero or outside the supported range for the Meeus algorithm.
  */
 export function vernalEquinoxJD(gregorianYear: number): number {
-    if (!Number.isInteger(gregorianYear) || gregorianYear < MEEUS_MIN_YEAR || gregorianYear > MEEUS_MAX_YEAR) {
+    if (!Number.isInteger(gregorianYear) || gregorianYear === 0) {
+        throw new RangeError('Year must be a non-zero integer in the proleptic Gregorian calendar.');
+    }
+
+    if (gregorianYear < MEEUS_MIN_YEAR || gregorianYear > MEEUS_MAX_YEAR) {
         throw new RangeError(
-            `Year ${gregorianYear} is out of range. Valid range: ${MEEUS_MIN_YEAR}–${MEEUS_MAX_YEAR}.`
+            `Gregorian year ${gregorianYear} is out of supported range (${MEEUS_MIN_YEAR}..-1 and 1..${MEEUS_MAX_YEAR}).`
         );
     }
 
+    const year = toAstronomicalYear(gregorianYear);
+
     // Mean equinox JDE in Terrestrial Time (Meeus Ch. 27, Table 27.a)
     let jde0: number;
-    if (gregorianYear >= 1000) {
+    if (year >= 1000) {
         const t = (gregorianYear - 2000) / 1000;
         jde0 = 2451623.80984 + 365242.37404 * t + 0.05169 * t ** 2
             - 0.00411 * t ** 3 - 0.00057 * t ** 4;

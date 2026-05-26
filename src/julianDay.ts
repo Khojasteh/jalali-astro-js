@@ -1,6 +1,5 @@
 /**
- * Conversions between proleptic Gregorian calendar dates and
- * Julian Day Numbers (JDN).
+ * Conversions between proleptic Gregorian calendar dates and Julian Day Numbers (JDN).
  *
  * A JDN is an integer — the Julian Day that begins at noon on a given civil day.
  * JDN 0 = 1 January 4713 BC (Julian), i.e. 24 November 4714 BC (proleptic Gregorian).
@@ -9,46 +8,40 @@
  * No year zero: year −1 precedes year 1.
  */
 
-import { toAstronomicalYear, toCalendarYear } from './yearUtils.js';
-
-/**
- * Asserts that the given year is a valid non-zero integer for the proleptic Gregorian calendar.
- *
- * @param year - The year to validate.
- * @throws {RangeError} If the year is not a non-zero integer.
- */
-function assertValidYear(year: number): asserts year is number {
-    if (!Number.isInteger(year) || year === 0) {
-        throw new RangeError('Year must be a non-zero integer in the proleptic Gregorian calendar.');
-    }
-}
-
-/**
- * Asserts that the given month is a valid integer between 1 and 12.
- *
- * @param month - The month to validate.
- * @throws {RangeError} If the month is not an integer between 1 and 12.
- */
-function assertValidMonth(month: number): asserts month is number {
-    if (!Number.isInteger(month) || month < 1 || month > 12) {
-        throw new RangeError('Month must be an integer between 1 and 12.');
-    }
-}
+import { toAstronomicalYear, toCalendarYear } from './yearNumbering.ts';
 
 /**
  * Converts a proleptic Gregorian date to its Julian Day Number.
+ *
+ * The proleptic Gregorian calendar extends the Gregorian calendar backward to dates
+ * before its introduction in 1582.
+ *
+ * This method does not account for the gap between the Julian and Gregorian calendars
+ * that occurred in 1582 (and later in some regions).
+ *
+ * The method also does not validate the day of month against the month and year. An
+ * invalid date (e.g. 31 February) will produce a JDN as if the calendar were extended
+ * indefinitely, without any adjustments for month lengths or leap years.
  *
  * @param year  - Proleptic Gregorian year (year −1 = 1 BCE, no year 0).
  * @param month - Month (1 = January … 12 = December).
  * @param day   - Day of month (1-based).
  * @returns The Julian Day Number (integer) for the given date.
- * @throws {RangeError} If the year is zero or the month is out of range.
+ * @throws RangeError if the year is not a non-zero integer, or if the month is not between 1 and 12, or if the day is not a positive integer.
  */
 export function gregorianToJDN(year: number, month: number, day: number): number {
-    assertValidYear(year);
-    assertValidMonth(month);
+    if (!Number.isInteger(year) || year === 0) {
+        throw new RangeError('Year must be a non-zero integer');
+    }
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+        throw new RangeError('Month must be between 1 and 12');
+    }
+    if (!Number.isInteger(day) || day < 1) {
+        throw new RangeError('Day must be a positive integer');
+    }
 
     const y0 = toAstronomicalYear(year);
+
     // Shift Jan/Feb into the previous year for the calculation
     const a = Math.floor((14 - month) / 12);
     const y = y0 + 4800 - a;
@@ -67,9 +60,13 @@ export function gregorianToJDN(year: number, month: number, day: number): number
  *
  * @param jdn - Julian Day Number (integer).
  * @returns The corresponding proleptic Gregorian date as `{ year, month, day }`.
- *          The year is never 0; years before 1 CE are returned as negative numbers.
+ * @throws RangeError if the JDN is not an integer.
  */
 export function gregorianFromJDN(jdn: number): { year: number; month: number; day: number } {
+    if (!Number.isInteger(jdn)) {
+        throw new RangeError('Julian Day Number must be an integer');
+    }
+
     const a = jdn + 32044;
     const b = Math.floor((4 * a + 3) / 146097);
     const c = a - Math.floor(146097 * b / 4);
@@ -93,36 +90,12 @@ export function gregorianFromJDN(jdn: number): { year: number; month: number; da
  *
  * @param jdn - Julian Day Number (integer).
  * @returns Day of week (0 = Sunday … 6 = Saturday).
+ * @throws RangeError if the JDN is not an integer.
  */
 export function dayOfWeekFromJDN(jdn: number): number {
-    return (jdn + 1) % 7;
-}
+    if (!Number.isInteger(jdn)) {
+        throw new RangeError('Julian Day Number must be an integer');
+    }
 
-/**
- * Returns the number of days in a given month of the proleptic Gregorian calendar.
- *
- * @param year  - Proleptic Gregorian year (for leap year calculation).
- * @param month - Month (1 = January … 12 = December).
- * @returns Number of days in the month (28–31).
- * @throws {RangeError} If the year is zero or the month is out of range.
- */
-export function gregorianDaysInMonth(year: number, month: number): number {
-    assertValidYear(year);
-    assertValidMonth(month);
-
-    const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    return month === 2 && gregorianIsLeapYear(year) ? 29 : daysInMonth[month - 1]!;
-}
-
-/**
- * Returns true if the given proleptic Gregorian year is a leap year.
- *
- * @param year - Proleptic Gregorian year.
- * @returns `true` if the year is a leap year, `false` otherwise.
- * @throws {RangeError} If the year is zero.
- */
-export function gregorianIsLeapYear(year: number): boolean {
-    assertValidYear(year);
-
-    return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+    return ((jdn + 1) % 7 + 7) % 7;
 }

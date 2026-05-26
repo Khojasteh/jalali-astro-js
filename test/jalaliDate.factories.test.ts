@@ -24,11 +24,7 @@ describe('JalaliDate.fromDate', () => {
     });
 
     it('rejects invalid Date values', () => {
-        assert.throws(
-            () => JalaliDate.fromDate(new Date(Number.NaN)),
-            RangeError,
-            `Expected fromDate(new Date(NaN)) to throw`
-        );
+        assert.throws(() => JalaliDate.fromDate(new Date(Number.NaN)), RangeError);
     });
 });
 
@@ -53,7 +49,8 @@ describe('JalaliDate.fromUnixTime', () => {
 
 describe('JalaliDate.fromJDN', () => {
     it('creates Nowruz 1403 from the Gregorian JDN for 2024-03-20', () => {
-        const date = JalaliDate.fromJDN(gregorianToJDN(2024, 3, 20));
+        const jdn = gregorianToJDN(2024, 3, 20);
+        const date = JalaliDate.fromJDN(jdn);
         assert.deepEqual(date.toObject(), { year: 1403, month: 1, day: 1 });
     });
 
@@ -79,20 +76,28 @@ describe('JalaliDate.fromJDN', () => {
 
     it('rejects non-integer or non-finite JDN values', () => {
         for (const jdn of [2451545.5, NaN, Infinity, -Infinity]) {
-            assert.throws(() => JalaliDate.fromJDN(jdn), RangeError);
+            assert.throws(
+                () => JalaliDate.fromJDN(jdn),
+                RangeError,
+                `Expected JalaliDate.fromJDN(${jdn}) to throw`
+            );
         }
     });
 
     it('rejects JDNs outside the supported Jalali range', () => {
         const min = new JalaliDate(JalaliDate.MIN_YEAR, 1, 1).jdn;
-        const max = new JalaliDate(
-            JalaliDate.MAX_YEAR,
-            12,
-            JalaliDate.daysInMonth(JalaliDate.MAX_YEAR, 12)
-        ).jdn;
+        assert.throws(
+            () => JalaliDate.fromJDN(min - 1),
+            RangeError,
+            `Expected JalaliDate.fromJDN(${min - 1}) to throw`
+        );
 
-        assert.throws(() => JalaliDate.fromJDN(min - 1), RangeError);
-        assert.throws(() => JalaliDate.fromJDN(max + 1), RangeError);
+        const max = new JalaliDate(JalaliDate.MAX_YEAR, 12, 29).jdn;
+        assert.throws(
+            () => JalaliDate.fromJDN(max + 1),
+            RangeError,
+            `Expected JalaliDate.fromJDN(${max + 1}) to throw`
+        );
     });
 });
 
@@ -120,7 +125,7 @@ describe('JalaliDate.fromGregorian', () => {
         });
     }
 
-    it('rejects invalid Gregorian dates and years', () => {
+    it('rejects invalid Gregorian dates', () => {
         const invalidDates: Array<[number, number, number]> = [
             [0, 1, 1],
             [2024, 0, 1],
@@ -130,17 +135,29 @@ describe('JalaliDate.fromGregorian', () => {
             [2023, 2, 29],
             [2024, 2, 30],
             [2024, 4, 31],
-            [JalaliDate.MIN_GREGORIAN_YEAR - 1, 1, 1],
-            [JalaliDate.MAX_GREGORIAN_YEAR + 1, 1, 1],
         ];
 
         for (const [year, month, day] of invalidDates) {
             assert.throws(
                 () => JalaliDate.fromGregorian(year, month, day),
                 RangeError,
-                `Expected fromGregorian(${year}, ${month}, ${day}) to throw`
+                `Expected JalaliDate.fromGregorian(${year}, ${month}, ${day}) to throw`
             );
         }
+    });
+
+    it('rejects Gregorian years outside the supported range', () => {
+        assert.throws(
+            () => JalaliDate.fromGregorian(JalaliDate.MIN_GREGORIAN_YEAR - 1, 1, 1),
+            RangeError,
+            `Expected JalaliDate.fromGregorian(${JalaliDate.MIN_GREGORIAN_YEAR - 1}, 1, 1) to throw`
+        );
+
+        assert.throws(
+            () => JalaliDate.fromGregorian(JalaliDate.MAX_GREGORIAN_YEAR + 1, 1, 1),
+            RangeError,
+            `Expected JalaliDate.fromGregorian(${JalaliDate.MAX_GREGORIAN_YEAR + 1}, 1, 1) to throw`
+        );
     });
 });
 
@@ -169,7 +186,10 @@ describe('JalaliDate.fromIsoDateString', () => {
         ];
 
         for (const input of invalid) {
-            assert.throws(() => JalaliDate.fromIsoDateString(input));
+            assert.throws(
+                () => JalaliDate.fromIsoDateString(input),
+                `Expected JalaliDate.fromIsoDateString('${input}') to throw`
+            );
         }
     });
 });
@@ -193,11 +213,21 @@ describe('JalaliDate.fromDayOfYear', () => {
     }
 
     it('rejects invalid day-of-year values', () => {
-        assert.throws(() => JalaliDate.fromDayOfYear(1402, 0), RangeError);
-        assert.throws(() => JalaliDate.fromDayOfYear(1402, 366), RangeError);
-        assert.throws(() => JalaliDate.fromDayOfYear(1403, 367), RangeError);
-        assert.throws(() => JalaliDate.fromDayOfYear(0, 1), RangeError);
-        assert.throws(() => JalaliDate.fromDayOfYear(1403, 1.5), RangeError);
+        const cases: Array<[number, number]> = [
+            [1402, 0],
+            [1402, 366],
+            [1403, 367],
+            [0, 1],
+            [1403, 1.5],
+        ];
+
+        for (const [year, dayOfYear] of cases) {
+            assert.throws(
+                () => JalaliDate.fromDayOfYear(year, dayOfYear),
+                RangeError,
+                `Expected JalaliDate.fromDayOfYear(${year}, ${dayOfYear}) to throw`
+            );
+        }
     });
 });
 
@@ -238,11 +268,21 @@ describe('JalaliDate.fromWeekOfYear', () => {
     });
 
     it('rejects invalid week or day-of-week values', () => {
-        assert.throws(() => JalaliDate.fromWeekOfYear(1403, 0, 6), RangeError);
-        assert.throws(() => JalaliDate.fromWeekOfYear(1403, 54, 6), RangeError);
-        assert.throws(() => JalaliDate.fromWeekOfYear(1403, 1, -1), RangeError);
-        assert.throws(() => JalaliDate.fromWeekOfYear(1403, 1, 7), RangeError);
-        assert.throws(() => JalaliDate.fromWeekOfYear(0, 1, 6), RangeError);
+        const cases: Array<[number, number, number]> = [
+            [1403, 0, 6],
+            [1403, 54, 6],
+            [1403, 1, -1],
+            [1403, 1, 7],
+            [0, 1, 6],
+        ];
+
+        for (const [year, weekOfYear, dayOfWeek] of cases) {
+            assert.throws(
+                () => JalaliDate.fromWeekOfYear(year, weekOfYear, dayOfWeek),
+                RangeError,
+                `Expected JalaliDate.fromWeekOfYear(${year}, ${weekOfYear}, ${dayOfWeek}) to throw`
+            );
+        }
     });
 });
 
@@ -283,10 +323,20 @@ describe('JalaliDate.fromNthWeekdayOfMonth', () => {
     });
 
     it('rejects invalid occurrence parameters', () => {
-        assert.throws(() => JalaliDate.fromNthWeekdayOfMonth(1403, 1, 0, 6), RangeError);
-        assert.throws(() => JalaliDate.fromNthWeekdayOfMonth(1403, 1, 6, 6), RangeError);
-        assert.throws(() => JalaliDate.fromNthWeekdayOfMonth(1403, 1, -6, 6), RangeError);
-        assert.throws(() => JalaliDate.fromNthWeekdayOfMonth(1403, 0, 1, 6), RangeError);
-        assert.throws(() => JalaliDate.fromNthWeekdayOfMonth(1403, 1, 1, 7), RangeError);
+        const cases: Array<[number, number, number, number]> = [
+            [1403, 1, 0, 6],
+            [1403, 1, 6, 6],
+            [1403, 1, -6, 6],
+            [1403, 0, 1, 6],
+            [1403, 1, 1, 7],
+        ];
+
+        for (const [year, month, occurrence, dayOfWeek] of cases) {
+            assert.throws(
+                () => JalaliDate.fromNthWeekdayOfMonth(year, month, occurrence, dayOfWeek),
+                RangeError,
+                `Expected JalaliDate.fromNthWeekdayOfMonth(${year}, ${month}, ${occurrence}, ${dayOfWeek}) to throw`
+            );
+        }
     });
 });

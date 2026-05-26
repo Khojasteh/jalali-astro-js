@@ -11,13 +11,13 @@ describe('toGregorian', () => {
         jalali: JalaliDate;
         gregorian: { year: number; month: number; day: number };
     }> = [
-        { jalali: new JalaliDate(1402, 1, 1), gregorian: { year: 2023, month: 3, day: 21 } },
-        { jalali: new JalaliDate(1402, 12, 29), gregorian: { year: 2024, month: 3, day: 19 } },
-        { jalali: new JalaliDate(1403, 1, 1), gregorian: { year: 2024, month: 3, day: 20 } },
-        { jalali: new JalaliDate(1403, 12, 30), gregorian: { year: 2025, month: 3, day: 20 } },
-        { jalali: new JalaliDate(1404, 1, 1), gregorian: { year: 2025, month: 3, day: 21 } },
-        { jalali: new JalaliDate(1405, 2, 12), gregorian: { year: 2026, month: 5, day: 2 } },
-    ];
+            { jalali: new JalaliDate(1402, 1, 1), gregorian: { year: 2023, month: 3, day: 21 } },
+            { jalali: new JalaliDate(1402, 12, 29), gregorian: { year: 2024, month: 3, day: 19 } },
+            { jalali: new JalaliDate(1403, 1, 1), gregorian: { year: 2024, month: 3, day: 20 } },
+            { jalali: new JalaliDate(1403, 12, 30), gregorian: { year: 2025, month: 3, day: 20 } },
+            { jalali: new JalaliDate(1404, 1, 1), gregorian: { year: 2025, month: 3, day: 21 } },
+            { jalali: new JalaliDate(1405, 2, 12), gregorian: { year: 2026, month: 5, day: 2 } },
+        ];
 
     for (const { jalali, gregorian } of cases) {
         it(`converts ${jalali.toString()} to Gregorian ${gregorian.year}-${gregorian.month}-${gregorian.day}`, () => {

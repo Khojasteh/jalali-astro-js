@@ -72,13 +72,8 @@ describe('addDays', () => {
             `Expected addDays(-1) on MIN_YEAR to throw`
         );
 
-        const max = new JalaliDate(
-            JalaliDate.MAX_YEAR,
-            12,
-            JalaliDate.daysInMonth(JalaliDate.MAX_YEAR, 12)
-        );
         assert.throws(
-            () => max.addDays(1),
+            () => new JalaliDate(JalaliDate.MAX_YEAR, 12, 29).addDays(1),
             RangeError,
             `Expected addDays(1) on MAX_YEAR to throw`
         );

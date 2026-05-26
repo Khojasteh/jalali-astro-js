@@ -30,9 +30,14 @@ const JALALI_TO_GREGORIAN_OFFSET = 621;
  *
  * @param year - Calendar year (non-zero integer).
  * @returns The corresponding astronomical year.
+ * @throws {RangeError} If the year is not a non-zero integer.
  */
 export function toAstronomicalYear(year: number): number {
-    return year <= 0 ? year + 1 : year;
+    if (!Number.isInteger(year) || year === 0) {
+        throw new RangeError('Year must be a non-zero integer.');
+    }
+
+    return year < 0 ? year + 1 : year;
 }
 
 /**
@@ -46,8 +51,13 @@ export function toAstronomicalYear(year: number): number {
  *
  * @param year - Astronomical year (integer, may be 0).
  * @returns The corresponding calendar year (never 0).
+ * @throws {RangeError} If the year is not an integer.
  */
 export function toCalendarYear(year: number): number {
+    if (!Number.isInteger(year)) {
+        throw new RangeError('Year must be an integer.');
+    }
+
     return year <= 0 ? year - 1 : year;
 }
 
@@ -102,7 +112,7 @@ export function gregorianToJalaliYear(gregorianYear: number): number {
  */
 export function expandTwoDigitJalaliYear(year: number, referenceYear: number): number {
     if (!Number.isInteger(year) || year < 0 || year > 99) {
-        throw new RangeError(`Two-digit Jalali year ${year} is out of range. Valid range: 0-99.`);
+        throw new RangeError(`Two-digit Jalali year ${year} is out of valid range (0-99).`);
     }
     if (!Number.isInteger(referenceYear) || referenceYear === 0) {
         throw new RangeError('Reference Jalali year must be a non-zero integer.');

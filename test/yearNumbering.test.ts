@@ -12,7 +12,7 @@ import {
     jalaliToGregorianYear,
     gregorianToJalaliYear,
     expandTwoDigitJalaliYear
-} from '../src/yearUtils.ts';
+} from '../src/yearNumbering.ts';
 
 describe('toAstronomicalYear', () => {
     it('leaves positive years unchanged', () => {
@@ -21,15 +21,15 @@ describe('toAstronomicalYear', () => {
         assert.equal(toAstronomicalYear(1404), 1404);
     });
 
-    it('maps calendar −1 to astronomical 0', () => {
+    it('maps calendar -1 to astronomical 0', () => {
         assert.equal(toAstronomicalYear(-1), 0);
     });
 
-    it('maps calendar −2 to astronomical −1', () => {
+    it('maps calendar -2 to astronomical -1', () => {
         assert.equal(toAstronomicalYear(-2), -1);
     });
 
-    it('maps calendar −100 to astronomical −99', () => {
+    it('maps calendar -100 to astronomical -99', () => {
         assert.equal(toAstronomicalYear(-100), -99);
     });
 });
@@ -41,15 +41,15 @@ describe('toCalendarYear', () => {
         assert.equal(toCalendarYear(1404), 1404);
     });
 
-    it('maps astronomical 0 to calendar −1', () => {
+    it('maps astronomical 0 to calendar -1', () => {
         assert.equal(toCalendarYear(0), -1);
     });
 
-    it('maps astronomical −1 to calendar −2', () => {
+    it('maps astronomical -1 to calendar -2', () => {
         assert.equal(toCalendarYear(-1), -2);
     });
 
-    it('maps astronomical −99 to calendar −100', () => {
+    it('maps astronomical -99 to calendar -100', () => {
         assert.equal(toCalendarYear(-99), -100);
     });
 });
@@ -79,11 +79,11 @@ describe('jalaliToGregorianYear', () => {
         assert.equal(jalaliToGregorianYear(2), 623);
     });
 
-    it('Jalali −1 → Gregorian 621', () => {
+    it('Jalali -1 → Gregorian 621', () => {
         assert.equal(jalaliToGregorianYear(-1), 621);
     });
 
-    it('Jalali −2 → Gregorian 620', () => {
+    it('Jalali -2 → Gregorian 620', () => {
         assert.equal(jalaliToGregorianYear(-2), 620);
     });
 
@@ -111,11 +111,11 @@ describe('gregorianToJalaliYear', () => {
         assert.equal(gregorianToJalaliYear(623), 2);
     });
 
-    it('Gregorian 621 → Jalali −1', () => {
+    it('Gregorian 621 → Jalali -1', () => {
         assert.equal(gregorianToJalaliYear(621), -1);
     });
 
-    it('Gregorian 620 → Jalali −2', () => {
+    it('Gregorian 620 → Jalali -2', () => {
         assert.equal(gregorianToJalaliYear(620), -2);
     });
 
@@ -176,13 +176,21 @@ describe('expandTwoDigitJalaliYear', () => {
 
     it('rejects values outside the two-digit range', () => {
         for (const year of [-1, 100, 1405, 1.5, NaN]) {
-            assert.throws(() => expandTwoDigitJalaliYear(year, 1405), RangeError);
+            assert.throws(
+                () => expandTwoDigitJalaliYear(year, 1405),
+                RangeError,
+                `Expected expandTwoDigitJalaliYear(${year}, 1405) to throw`
+            );
         }
     });
 
     it('rejects invalid reference years', () => {
         for (const referenceYear of [0, 1405.5, NaN]) {
-            assert.throws(() => expandTwoDigitJalaliYear(10, referenceYear), RangeError);
+            assert.throws(
+                () => expandTwoDigitJalaliYear(10, referenceYear),
+                RangeError,
+                `Expected expandTwoDigitJalaliYear(10, ${referenceYear}) to throw`
+            );
         }
     });
 });

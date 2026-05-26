@@ -8,7 +8,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { MEEUS_MIN_YEAR, MEEUS_MAX_YEAR } from '../src/astronomy.ts';
 import { nowruzJDN, clearNowruzCache } from '../src/nowruz.ts';
-import { gregorianToJalaliYear } from '../src/yearUtils.ts';
+import { gregorianToJalaliYear } from '../src/yearNumbering.ts';
 import { gregorianToJDN } from '../src/julianDay.ts';
 
 function expectedNowruzJDN(gYear: number, gMonth: number, gDay: number): number {
@@ -73,8 +73,7 @@ describe('nowruzJDN', () => {
         });
 
         it('rejects years below the Meeus-supported range', () => {
-            const minSupportedJalaliYear =
-                gregorianToJalaliYear(MEEUS_MIN_YEAR);
+            const minSupportedJalaliYear = gregorianToJalaliYear(MEEUS_MIN_YEAR);
 
             assert.throws(
                 () => nowruzJDN(minSupportedJalaliYear - 1),
