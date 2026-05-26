@@ -6,13 +6,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-
-import {
-    gregorianToJDN,
-    gregorianFromJDN,
-    gregorianIsLeapYear,
-    gregorianDaysInMonth,
-} from '../src/julianDay.ts';
+import { gregorianToJDN, gregorianFromJDN, dayOfWeekFromJDN } from '../src/julianDay.ts';
 
 type GregorianDate = {
     year: number;
@@ -114,23 +108,23 @@ describe('Gregorian calendar JDN conversion', () => {
         });
     }
 
-    it('increments JDN by 1 for consecutive Gregorian dates', () => {
-        const cases: Array<[GregorianDate, GregorianDate]> = [
-            [
-                { year: 2024, month: 5, day: 3 },
-                { year: 2024, month: 5, day: 4 },
-            ],
-            [
-                { year: 2023, month: 12, day: 31 },
-                { year: 2024, month: 1, day: 1 },
-            ],
-            [
-                { year: -1, month: 12, day: 31 },
-                { year: 1, month: 1, day: 1 },
-            ],
-        ];
+    const consecutiveCases: Array<[GregorianDate, GregorianDate]> = [
+        [
+            { year: 2024, month: 5, day: 3 },
+            { year: 2024, month: 5, day: 4 },
+        ],
+        [
+            { year: 2023, month: 12, day: 31 },
+            { year: 2024, month: 1, day: 1 },
+        ],
+        [
+            { year: -1, month: 12, day: 31 },
+            { year: 1, month: 1, day: 1 },
+        ],
+    ];
 
-        for (const [a, b] of cases) {
+    for (const [a, b] of consecutiveCases) {
+        it(`increments JDN by 1: ${a.year}-${a.month}-${a.day} -> ${b.year}-${b.month}-${b.day}`, () => {
             const jdnA = gregorianToJDN(a.year, a.month, a.day);
             const jdnB = gregorianToJDN(b.year, b.month, b.day);
 
@@ -139,8 +133,8 @@ describe('Gregorian calendar JDN conversion', () => {
                 1,
                 `Expected ${b.year}-${b.month}-${b.day} to be one day after ${a.year}-${a.month}-${a.day}`
             );
-        }
-    });
+        });
+    }
 
     it('rejects year zero', () => {
         assert.throws(
@@ -149,17 +143,16 @@ describe('Gregorian calendar JDN conversion', () => {
         );
     });
 
-    it('rejects invalid months', () => {
-        const invalidMonths = [0, 13, -1, 99];
-
-        for (const month of invalidMonths) {
+    const invalidMonths = [0, 13, -1, 99];
+    for (const month of invalidMonths) {
+        it(`rejects invalid month ${month}`, () => {
             assert.throws(
                 () => gregorianToJDN(2024, month, 1),
                 RangeError,
                 `Expected month ${month} to be rejected`
             );
-        }
-    });
+        });
+    }
 });
 
 // ---------------------------------------------------------------------------
@@ -167,28 +160,32 @@ describe('Gregorian calendar JDN conversion', () => {
 // ---------------------------------------------------------------------------
 
 describe('gregorianFromJDN', () => {
-    it('crosses a normal year boundary correctly', () => {
-        const dec31 = gregorianToJDN(2023, 12, 31);
+    const dec31 = gregorianToJDN(2023, 12, 31);
 
+    it('returns 2023-12-31 for JDN of 2023-12-31', () => {
         assertGregorianDateEqual(
             gregorianFromJDN(dec31),
             { year: 2023, month: 12, day: 31 }
         );
+    });
 
+    it('returns 2024-1-1 for JDN one greater than 2023-12-31', () => {
         assertGregorianDateEqual(
             gregorianFromJDN(dec31 + 1),
             { year: 2024, month: 1, day: 1 }
         );
     });
 
-    it('crosses the no-year-zero boundary correctly', () => {
-        const bceDec31 = gregorianToJDN(-1, 12, 31);
+    const bceDec31 = gregorianToJDN(-1, 12, 31);
 
+    it('returns -1-12-31 for JDN of -1-12-31', () => {
         assertGregorianDateEqual(
             gregorianFromJDN(bceDec31),
             { year: -1, month: 12, day: 31 }
         );
+    });
 
+    it('returns 1-1-1 for JDN one greater than -1-12-31', () => {
         assertGregorianDateEqual(
             gregorianFromJDN(bceDec31 + 1),
             { year: 1, month: 1, day: 1 }
@@ -197,102 +194,49 @@ describe('gregorianFromJDN', () => {
 });
 
 // ---------------------------------------------------------------------------
-// gregorianIsLeapYear
+// dayOfWeekFromJDN
 // ---------------------------------------------------------------------------
 
-describe('gregorianIsLeapYear', () => {
-    const cases: Array<{
-        year: number;
-        expected: boolean;
-        reason: string;
-    }> = [
-            { year: 1, expected: false, reason: 'ordinary common year' },
-            { year: 4, expected: true, reason: 'divisible by 4' },
-            { year: 2023, expected: false, reason: 'ordinary common year' },
-            { year: 2024, expected: true, reason: 'divisible by 4, not by 100' },
-            { year: 1900, expected: false, reason: 'divisible by 100 but not by 400' },
-            { year: 2000, expected: true, reason: 'divisible by 400' },
-            { year: 2100, expected: false, reason: 'divisible by 100 but not by 400' },
-            { year: 2400, expected: true, reason: 'divisible by 400' },
-            { year: -1, expected: false, reason: '1 BCE, common year' },
-            { year: -4, expected: true, reason: '5 BCE, leap year under implementation convention' },
-        ];
-
-    for (const { year, expected, reason } of cases) {
-        it(`identifies ${year} as ${expected ? 'leap' : 'common'} year (${reason})`, () => {
-            assert.equal(gregorianIsLeapYear(year), expected);
-        });
-    }
-
-    it('rejects year zero', () => {
-        assert.throws(
-            () => gregorianIsLeapYear(0),
-            RangeError
-        );
-    });
-});
-
-// ---------------------------------------------------------------------------
-// gregorianDaysInMonth
-// ---------------------------------------------------------------------------
-
-describe('gregorianDaysInMonth', () => {
-    const monthLengths2024: Array<[number, number]> = [
-        [1, 31],
-        [2, 29],
-        [3, 31],
-        [4, 30],
-        [5, 31],
-        [6, 30],
-        [7, 31],
-        [8, 31],
-        [9, 30],
-        [10, 31],
-        [11, 30],
-        [12, 31],
+describe('dayOfWeekFromJDN', () => {
+    const cases: Array<{ date: GregorianDate; expected: number; label: string }> = [
+        { date: { year: 1970, month: 1, day: 1 }, expected: 4, label: 'Unix epoch (Thursday)' },
+        { date: { year: 2000, month: 1, day: 1 }, expected: 6, label: 'J2000 (Saturday)' },
+        { date: { year: 2024, month: 5, day: 3 }, expected: 5, label: 'modern date (Friday)' },
     ];
 
-    for (const [month, days] of monthLengths2024) {
-        it(`returns ${days} days for month ${month} in leap year 2024`, () => {
-            assert.equal(gregorianDaysInMonth(2024, month), days);
+    for (const { date, expected, label } of cases) {
+        it(`returns ${expected} for ${date.year}-${date.month}-${date.day} (${label})`, () => {
+            const jdn = gregorianToJDN(date.year, date.month, date.day);
+
+            assert.equal(
+                dayOfWeekFromJDN(jdn),
+                expected
+            );
         });
     }
 
-    const februaryCases: Array<{
-        year: number;
-        days: number;
-        reason: string;
-    }> = [
-            { year: 2023, days: 28, reason: 'ordinary common year' },
-            { year: 2024, days: 29, reason: 'ordinary leap year' },
-            { year: 1900, days: 28, reason: 'century common year' },
-            { year: 2000, days: 29, reason: '400-year leap year' },
-            { year: -1, days: 28, reason: '1 BCE common year' },
-            { year: -4, days: 29, reason: '5 BCE leap year under implementation convention' },
-        ];
+    const sampleJDN = gregorianToJDN(2024, 5, 3);
 
-    for (const { year, days, reason } of februaryCases) {
-        it(`returns ${days} days for February ${year} (${reason})`, () => {
-            assert.equal(gregorianDaysInMonth(year, 2), days);
-        });
-    }
-
-    it('rejects year zero', () => {
-        assert.throws(
-            () => gregorianDaysInMonth(0, 2),
-            RangeError
+    it('advances by 1 for the next JDN', () => {
+        assert.equal(
+            dayOfWeekFromJDN(sampleJDN + 1),
+            (dayOfWeekFromJDN(sampleJDN) + 1) % 7
         );
     });
 
-    it('rejects invalid months', () => {
-        const invalidMonths = [0, 13, -1, 99];
+    it('repeats every 7 days', () => {
+        assert.equal(
+            dayOfWeekFromJDN(sampleJDN + 7),
+            dayOfWeekFromJDN(sampleJDN)
+        );
+    });
 
-        for (const month of invalidMonths) {
-            assert.throws(
-                () => gregorianDaysInMonth(2024, month),
-                RangeError,
-                `Expected month ${month} to be rejected`
-            );
-        }
+    it('handles negative JDNs (returns 0..6 and repeats every 7 days)', () => {
+        const negativeJDN = -1;
+        const negDow = dayOfWeekFromJDN(negativeJDN);
+
+        assert.equal(Number.isInteger(negDow), true, 'dayOfWeek should be an integer for negative JDN');
+        assert.ok(negDow >= 0 && negDow <= 6, `dayOfWeek ${negDow} out of range for negative JDN`);
+        assert.equal(dayOfWeekFromJDN(negativeJDN + 7), negDow, 'dayOfWeek should repeat every 7 days for negative JDNs');
     });
 });

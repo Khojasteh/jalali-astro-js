@@ -4,9 +4,15 @@ Accurate Gregorian and Jalali date conversion for JavaScript and TypeScript, wit
 
 `jalali-astro` implements the equinox-based rule of the Jalali calendar, also known as the Iranian or Persian calendar. It computes Nowruz from the vernal equinox in Iran Standard Time and derives leap years from the distance between consecutive Nowruz dates.
 
-Unlike libraries that rely on repeating leap-year cycles, this package does not use a fixed arithmetic approximation, avoiding known failure cases in years where cycle-based rules place Nowruz on the wrong Gregorian day.
+The library provides a complete API for working with Jalali dates, including conversion, validation, formatting, parsing, date arithmetic, week calculations, derived dates, and immutable date manipulation.
 
-The library provides a comprehensive API including date arithmetic, formatting, parsing, validation, week calculations, and immutable date manipulation.
+## Why jalali-astro?
+
+Many Jalali date libraries use fixed arithmetic leap-year cycles. These rules are simple and fast, but they are approximations of the calendar. In some years, cycle-based methods can place Nowruz on the wrong Gregorian day.
+
+`jalali-astro` does not use a fixed leap-year cycle. Instead, it follows the astronomical rule of the Jalali calendar: Nowruz is determined from the vernal equinox in Iran civil time, and leap years are derived from the number of days between consecutive Nowruz dates.
+
+As a result, `jalali-astro` follows the astronomical definition of the Jalali calendar rather than approximating it with a repeating arithmetic cycle.
 
 > تفاوت اصلی این بسته با بسیاری از کتابخانه‌های رایج جلالی این است که برای تشخیص سال کبیسه از چرخه‌های عددی ثابت استفاده نمی‌کند.
 >
@@ -14,36 +20,56 @@ The library provides a comprehensive API including date arithmetic, formatting, 
 >
 > در نتیجه، در سال‌هایی که روش‌های چرخه‌ای ممکن است روز آغاز سال جلالی را اشتباه محاسبه کنند، این بسته همچنان از قاعدهٔ مبتنی بر اعتدال بهاری پیروی می‌کند.
 
+## Astronomical calendar rule
+
+`jalali-astro` calculates Jalali calendar dates from astronomical estimates of the vernal equinox. It uses the equinox algorithm described by Jean Meeus in *Astronomical Algorithms*, 2nd edition, Chapter 27, and is intended to provide high-accuracy results, especially for modern dates.
+
+In the Jalali calendar, the first day of the year, Nowruz, is determined by the time of the vernal equinox in Iran civil time (UTC+03:30). If the equinox occurs before local noon, Nowruz falls on that day. If it occurs at or after local noon, Nowruz falls on the following day.
+
+Because this rule depends on which side of local noon the equinox falls, dates near that boundary require particular care. When the calculated equinox time is very close to noon, small differences in astronomical models, time-scale conventions, or rounding methods can place the event on either side of the boundary. In these rare cases, the resulting Nowruz date may differ by one day.
+
+## Supported date range
+
+The astronomical calculation is supported from 1001 BCE through 3000 CE in the proleptic Gregorian calendar, corresponding approximately to Jalali years -1622 through 2378.
+
+`jalali-astro` enforces this range for date conversions that depend on the equinox calculation.
+
 ## Features
 
-**Core functionality:**
-* Astronomically accurate Gregorian to Jalali and Jalali to Gregorian conversion
-* Leap years derived from vernal equinox calculation (not fixed cycles)
-* Immutable `JalaliDate` value object with rich properties and methods
-* Various date creation methods (day of year, week of year, nth weekday of month, etc.)
+**Astronomical conversion**
+* Gregorian to Jalali and Jalali to Gregorian conversion
+* Leap years derived from vernal equinox calculations, not fixed cycles
+* Nowruz calculation based on Iran civil time
+* Access to the vernal equinox used for a Jalali year
 
-**Date manipulation:**
-* Date arithmetic with days, months, and years
-* Derived dates (start/end of year, quarter, month, week)
-* Immutability helpers (withYear, withMonth, withDay)
-* Date difference calculations (days, months, years)
-* Age calculation
+**Date creation and validation**
+* Create dates from Jalali year, month, and day
+* Create dates from Gregorian dates, ISO date strings, JavaScript `Date` objects, Unix timestamps, and Julian Day Numbers
+* Create dates from day of year, week of year, or nth weekday of a month
 
-**Rich properties:**
-* Year, quarter, month, day properties
-* Week of year and week of month
-* Day of year and day of week
-* Persian month and day-of-week names
-* Leap year detection and days-in-month/year
+**Date arithmetic and derived dates**
+* Add or subtract days, months, and years
+* Get the start or end of a year, quarter, month, or week
+* Calculate differences in days, months, and years
+* Calculate age in complete years
+* Weeks start on Saturday and end on Friday
 
-**Formatting & parsing:**
-* Flexible formatting with Persian numerals
-* Pattern-based parsing with Persian/Latin digit support
-* Month and weekday name support
+**Immutable date object**
+* Immutable `JalaliDate` value object
+* Rich date properties, including year, quarter, month, day, day of year, week of year, week of month, and Julian Day Number
+* Fluent helpers for changing year, month, or day without mutating the original date
+* Comparison helpers such as `equals`, `isBefore`, `isAfter`, `isBetween`, `isSameWeek`, and `isSameQuarter`
 
-**Quality & compatibility:**
+**Formatting and parsing**
+* Format dates with Persian month names, weekday names, quarter names, and Persian-Indic digits
+* Parse dates with Persian or Latin digits
+* Pattern-based parsing with validation of month names, weekday names, and quarter names
+* Optional Right-to-Left Mark handling for correct display of Persian text
+
+**Quality and compatibility**
 * Full TypeScript type definitions
 * ES module and CommonJS builds
+* Direct browser usage via IIFE build
 * Zero runtime dependencies
 * Comprehensive test suite
 
@@ -92,39 +118,6 @@ const parsed1 = JalaliDate.parse('1405/02/14');
 const parsed2 = JalaliDate.parse('۱۴۰۵/۰۲/۱۴');
 const parsed3 = JalaliDate.parse('‏۱۴ اردیبهشت ۱۴۰۵', 'D MMMM YYYY');
 ```
-
-## How the calendar works
-
-The Jalali year begins at Nowruz, the first day of the year. Nowruz is determined from the vernal equinox, also known as the March equinox in the Northern Hemisphere.
-
-The calendar rule is:
-
-> If the vernal equinox occurs before 12:00 noon in Iran Standard Time (UTC+03:30), the Jalali year begins at the start of that civil day. If the equinox occurs at or after 12:00 noon, the year begins at the start of the following civil day.
-
-A Jalali year is a leap year when the number of days from its Nowruz to the next year's Nowruz is 366. Otherwise, it is a common year of 365 days.
-
-Leap years are therefore a consequence of the equinox calculation, not a separate repeating rule.
-
-## Why equinox-based calculation matters
-
-Many Jalali libraries use arithmetic leap-year cycles. These are convenient approximations and are often correct for ordinary dates, but the Jalali calendar is not defined by a repeating cycle.
-
-`jalali-astro` is built for correctness according to the equinox-based calendar rule. It computes the vernal equinox, applies the Iran Standard Time noon rule, and derives Nowruz and leap-year behavior from that calculation.
-
-This distinction matters most in boundary years, when the equinox occurs close enough to noon that a cycle-based implementation and an astronomical implementation may place Nowruz on different Gregorian days.
-
-For example, SH 1396, corresponding to 2017, is a useful boundary case. The vernal equinox occurred after noon in Iran Standard Time, so the first day of the Jalali year fell on 2017-03-21.
-
-In years like this, a repeating arithmetic cycle can choose a different Gregorian day for the start of the Jalali year. `jalali-astro` avoids that class of error by deriving the year boundary from the equinox itself.
-
-### Common approaches and trade-offs
-
-| Approach                 | Description                                                                | Trade-off                                                              |
-| ------------------------ | -------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| 33-year cycle            | Distributes leap years across a repeating 33-year pattern                  | Simple and fast, but approximate over long periods                     |
-| 2820-year cycle          | Uses a more elaborate arithmetic cycle often associated with Ahmad Birashk | More refined, but still fixed-cycle rather than equinox-based          |
-| Lookup tables            | Stores known Nowruz dates or leap years                                    | Excellent within the table range, but limited outside it               |
-| Astronomical calculation | Computes the vernal equinox and derives Nowruz from it                     | Follows the equinox-based calendar rule without fixed leap-year cycles |
 
 ## Module formats
 
@@ -183,14 +176,6 @@ npm install
 npm run build
 npm test
 ```
-
-## Notes on accuracy
-
-`jalali-astro` uses the equinox algorithm from Jean Meeus, *Astronomical Algorithms*, 2nd edition, Chapter 27. The calculation is intended to provide high-accuracy vernal equinox estimates over the supported range, especially for modern dates.
-
-The supported range is Gregorian years -1000 to +3000, equivalent to Jalali years -1621 to +2378.
-
-For contemporary years, the resulting equinox times are typically close enough for reliable application of the noon rule. Near a noon boundary, however, even small differences between astronomical models, time-scale assumptions, or official determinations can matter.
 
 ## API Reference
 
@@ -679,6 +664,20 @@ JalaliDate.setTestToday(new JalaliDate(1405, 3, 3));
 const today = JalaliDate.today(); // 1405/03/03
 JalaliDate.setTestToday(null);
 ```
+
+#### `JalaliDate.getTestToday()`
+
+Returns the currently set test date for "today" or `null` if the real current date is used.
+
+```ts
+const testToday = JalaliDate.getTestToday();
+if (testToday !== null) {
+  console.log(`Test "today" is set to: ${testToday.toString()}`);
+} else {
+  console.log('Using real current date for "today".');
+}
+```
+
 
 ## License
 

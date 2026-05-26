@@ -68,10 +68,20 @@ describe('JalaliDate.daysInMonth', () => {
     });
 
     it('rejects invalid year or month', () => {
-        assert.throws(() => JalaliDate.daysInMonth(0, 1), RangeError);
-        assert.throws(() => JalaliDate.daysInMonth(1403, 0), RangeError);
-        assert.throws(() => JalaliDate.daysInMonth(1403, 13), RangeError);
-        assert.throws(() => JalaliDate.daysInMonth(1403, 1.5), RangeError);
+        const cases: Array<[number, number]> = [
+            [0, 1],
+            [1403, 0],
+            [1403, 13],
+            [1403, 1.5],
+        ];
+
+        for (const [year, month] of cases) {
+            assert.throws(
+                () => JalaliDate.daysInMonth(year, month),
+                RangeError,
+                `Expected daysInMonth(${year}, ${month}) to throw`
+            );
+        }
     });
 });
 
@@ -109,8 +119,22 @@ describe('JalaliDate.daysInYear', () => {
     });
 
     it('rejects invalid years', () => {
-        for (const year of [0, JalaliDate.MIN_YEAR - 1, JalaliDate.MAX_YEAR + 1, 1.5, NaN, Infinity]) {
-            assert.throws(() => JalaliDate.daysInYear(year), RangeError);
+        const cases: Array<number> = [
+            0,
+            JalaliDate.MIN_YEAR - 1,
+            JalaliDate.MAX_YEAR + 1,
+            1.5,
+            NaN,
+            Infinity,
+            -Infinity
+        ];
+
+        for (const year of cases) {
+            assert.throws(
+                () => JalaliDate.daysInYear(year),
+                RangeError,
+                `Expected daysInYear(${year}) to throw`
+            );
         }
     });
 });
@@ -131,8 +155,22 @@ describe('JalaliDate.isLeapYear', () => {
     });
 
     it('rejects invalid years', () => {
-        for (const year of [0, JalaliDate.MIN_YEAR - 1, JalaliDate.MAX_YEAR + 1, 1.5, NaN, Infinity]) {
-            assert.throws(() => JalaliDate.isLeapYear(year), RangeError);
+        const cases: Array<number> = [
+            0,
+            JalaliDate.MIN_YEAR - 1,
+            JalaliDate.MAX_YEAR + 1,
+            1.5,
+            NaN,
+            Infinity,
+            -Infinity
+        ];
+
+        for (const year of cases) {
+            assert.throws(
+                () => JalaliDate.isLeapYear(year),
+                RangeError,
+                `Expected isLeapYear(${year}) to throw`
+            );
         }
     });
 });
@@ -154,9 +192,23 @@ describe('JalaliDate.vernalEquinox', () => {
     });
 
     it('rejects invalid Jalali years', () => {
-        assert.throws(() => JalaliDate.vernalEquinox(0), RangeError);
-        assert.throws(() => JalaliDate.vernalEquinox(JalaliDate.MIN_YEAR - 1), RangeError);
-        assert.throws(() => JalaliDate.vernalEquinox(JalaliDate.MAX_YEAR + 1), RangeError);
+        const cases: Array<number> = [
+            0,
+            JalaliDate.MIN_YEAR - 1,
+            JalaliDate.MAX_YEAR + 1,
+            1.5,
+            NaN,
+            Infinity,
+            -Infinity
+        ];
+
+        for (const year of cases) {
+            assert.throws(
+                () => JalaliDate.vernalEquinox(year),
+                RangeError,
+                `Expected vernalEquinox(${year}) to throw`
+            );
+        }
     });
 });
 
@@ -239,5 +291,27 @@ describe('JalaliDate.setTestToday', () => {
         } finally {
             JalaliDate.setTestToday(null);
         }
+    });
+});
+
+describe('JalaliDate.getTestToday', () => {
+    it('is null by default', () => {
+        assert.equal(JalaliDate.getTestToday(), null);
+    });
+
+    it('returns the exact instance that was set', () => {
+        const testToday = new JalaliDate(1405, 3, 3);
+        JalaliDate.setTestToday(testToday);
+
+        try {
+            assert.strictEqual(JalaliDate.getTestToday(), testToday);
+        } finally {
+            JalaliDate.setTestToday(null);
+        }
+    });
+
+    it('returns null after clearing', () => {
+        JalaliDate.setTestToday(null);
+        assert.equal(JalaliDate.getTestToday(), null);
     });
 });

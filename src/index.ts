@@ -5,4 +5,4 @@
  * Public API.
  */
 
-export { JalaliDate, DayOfWeek, Occurrence, Quarter } from './jalaliDate.js';
+export { JalaliDate, DayOfWeek, Occurrence, Quarter } from './jalaliDate.ts';

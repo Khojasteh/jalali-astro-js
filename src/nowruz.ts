@@ -2,12 +2,14 @@
  * Nowruz (Iranian New Year) calculation.
  *
  * Nowruz falls on the day of the vernal equinox as observed in Tehran (UTC+3:30).
- * The official rule: if the equinox moment occurs **before** Tehran noon, Nowruz is that
- * civil day; if it occurs **at or after** noon, Nowruz is the following civil day.
+ *
+ * The official rule:
+ * - if the equinox moment occurs **before** Tehran noon, Nowruz is that civil day;
+ * - if it occurs **at or after** noon, Nowruz is the following civil day.
  */
 
-import { vernalEquinoxJD, MEEUS_MIN_YEAR, MEEUS_MAX_YEAR } from './astronomy.js';
-import { jalaliToGregorianYear, gregorianToJalaliYear } from './yearUtils.js';
+import { vernalEquinoxJD } from './astronomy.js';
+import { jalaliToGregorianYear } from './yearNumbering.ts';
 
 /**
  * Iran Standard Time offset from UTC in fractional days (+03:30).
@@ -26,8 +28,8 @@ const nowruzCache = new Map<number, number>();
  * Results are memoised.
  *
  * @param jalaliYear - Jalali year.
- * @returns The JDN of 1 Farvardin (Nowruz) for `jalaliYear`.
- * @throws {RangeError} If the year is outside the supported range or is 0.
+ * @returns The JDN of the first day of the given Jalali year (Nowruz).
+ * @throws {RangeError} If the year zero or if the corresponding Gregorian year is outside the supported range for the Meeus algorithm.
  */
 export function nowruzJDN(jalaliYear: number): number {
     const cached = nowruzCache.get(jalaliYear);
@@ -38,12 +40,6 @@ export function nowruzJDN(jalaliYear: number): number {
     }
 
     const gregorianYear = jalaliToGregorianYear(jalaliYear);
-    if (gregorianYear < MEEUS_MIN_YEAR || gregorianYear > MEEUS_MAX_YEAR) {
-        throw new RangeError(
-            `Jalali year ${jalaliYear} is out of range. Supported range: ` +
-            `${gregorianToJalaliYear(MEEUS_MIN_YEAR)}–${gregorianToJalaliYear(MEEUS_MAX_YEAR)}.`
-        );
-    }
 
     // Equinox Julian Day in Universal Time (noon-based)
     const equinoxJD_UT = vernalEquinoxJD(gregorianYear);

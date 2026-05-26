@@ -5,14 +5,13 @@
  *
  * Supported year range: {@link JalaliDate.MIN_YEAR} to {@link JalaliDate.MAX_YEAR}
  * (Gregorian: {@link JalaliDate.MIN_GREGORIAN_YEAR} to {@link JalaliDate.MAX_GREGORIAN_YEAR}).
- *
- * Day-of-week follows the JS Date convention: 0=Sunday, 1=Monday, …, 6=Saturday.
  */
 
-import { vernalEquinoxJD, MEEUS_MIN_YEAR, MEEUS_MAX_YEAR } from './astronomy.js';
-import { gregorianToJDN, gregorianFromJDN, gregorianDaysInMonth, dayOfWeekFromJDN } from './julianDay.js';
-import { toAstronomicalYear, toCalendarYear, jalaliToGregorianYear, gregorianToJalaliYear, expandTwoDigitJalaliYear } from './yearUtils.js';
-import { formatInteger, parseInteger } from './persianNumberUtils.js';
+import { vernalEquinoxJD, MEEUS_MIN_YEAR, MEEUS_MAX_YEAR } from './astronomy.ts';
+import { gregorianToJDN, gregorianFromJDN, dayOfWeekFromJDN } from './julianDay.ts';
+import { toAstronomicalYear, toCalendarYear, jalaliToGregorianYear, gregorianToJalaliYear, expandTwoDigitJalaliYear } from './yearNumbering.ts';
+import { formatInteger, parseInteger } from './persianNumbers.ts';
+import { gregorianDaysInMonth } from './gregorianRules.ts';
 import { nowruzJDN } from './nowruz.js';
 
 // ---------------------------------------------------------------------------
@@ -52,6 +51,10 @@ export enum Quarter {
     Autumn = 3,
     Winter = 4
 }
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
 /**
  * Julian Day Number of the Unix epoch (1970-01-01 at noon UTC).
@@ -97,19 +100,6 @@ const QUARTER_NAMES_FA: ReadonlyArray<string> = [
  * Regular expression to match format tokens in pattern strings.
  */
 const FORMAT_TOKENS = /"[^"]*"|'[^']*'|YYYY|YY|MMMM|MM|M|DDDD|DD|D|Q/gi;
-
-/**
- * Options for {@link JalaliDate.format}.
- */
-export interface FormatOptions {
-    /**
-     * Controls Right-to-Left Mark (U+200F) insertion:
-     * - `'never'`: Never add RLM (default).
-     * - `'always'`: Always prepend RLM to the result.
-     * - `'auto'`: Add RLM only when the result starts with a Persian digit.
-     */
-    rlm?: 'never' | 'always' | 'auto';
-}
 
 // ---------------------------------------------------------------------------
 // Pattern parsing helpers
@@ -237,26 +227,35 @@ function compilePattern(pattern: string): CompiledPattern {
 }
 
 // ---------------------------------------------------------------------------
+// Format options
+// ---------------------------------------------------------------------------
+
+/**
+ * Options for {@link JalaliDate.format}.
+ */
+export interface FormatOptions {
+    /**
+     * Controls Right-to-Left Mark (U+200F) insertion:
+     * - `'never'`: Never add RLM (default).
+     * - `'always'`: Always prepend RLM to the result.
+     * - `'auto'`: Add RLM only when the result starts with a Persian digit.
+     */
+    rlm?: 'never' | 'always' | 'auto';
+}
+
+// ---------------------------------------------------------------------------
 // JalaliDate class
 // ---------------------------------------------------------------------------
 
+/**
+ * Immutable value object representing a Jalali date.
+ *
+ * Instances can be created via the constructor or static factory methods.
+ */
 export class JalaliDate {
     // ---------------------------------------------------------------------------
     // Year range constants
     // ---------------------------------------------------------------------------
-
-    /**
-     * Minimum supported Jalali year.
-     */
-    static readonly MIN_YEAR = gregorianToJalaliYear(MEEUS_MIN_YEAR); // −1621
-
-    /**
-     * Maximum supported Jalali year.
-     *
-     * One year below the Meeus ceiling so that year+1 remains computable
-     * for {@link isLeapYear} and {@link daysInYear}.
-     */
-    static readonly MAX_YEAR = gregorianToJalaliYear(MEEUS_MAX_YEAR) - 1; // 2378
 
     /**
      * Minimum supported Gregorian year.
@@ -265,8 +264,22 @@ export class JalaliDate {
 
     /**
      * Maximum supported Gregorian year.
+     *
+     * One less than MEEUS_MAX_YEAR to ensure that the days in the final Jalali year
+     * are computable, since the algorithm relies on finding the next Nowruz JDN which
+     * would be out of range for MEEUS_MAX_YEAR.
      */
-    static readonly MAX_GREGORIAN_YEAR = MEEUS_MAX_YEAR;
+    static readonly MAX_GREGORIAN_YEAR = MEEUS_MAX_YEAR - 1;
+
+    /**
+     * Minimum supported Jalali year.
+     */
+    static readonly MIN_YEAR = gregorianToJalaliYear(JalaliDate.MIN_GREGORIAN_YEAR);
+
+    /**
+     * Maximum supported Jalali year.
+     */
+    static readonly MAX_YEAR = gregorianToJalaliYear(JalaliDate.MAX_GREGORIAN_YEAR);
 
     // ---------------------------------------------------------------------------
     // Static test state
@@ -307,13 +320,14 @@ export class JalaliDate {
      * @throws {RangeError} If `year` is out of range or is 0.
      */
     protected static assertGregorianYearInRange(year: number): void {
-        if (!Number.isInteger(year) || year < JalaliDate.MIN_GREGORIAN_YEAR || year > JalaliDate.MAX_GREGORIAN_YEAR) {
-            throw new RangeError(
-                `Gregorian year ${year} is out of range. Supported range: ${JalaliDate.MIN_GREGORIAN_YEAR}–${JalaliDate.MAX_GREGORIAN_YEAR}.`
-            );
+        if (!Number.isInteger(year) || year === 0) {
+            throw new RangeError('Year must be a non-zero integer in the Gregorian calendar.');
         }
-        if (year === 0) {
-            throw new RangeError('Year 0 does not exist in the Gregorian calendar.');
+
+        if (year < JalaliDate.MIN_GREGORIAN_YEAR || year > JalaliDate.MAX_GREGORIAN_YEAR) {
+            throw new RangeError(
+                `Gregorian year ${year} is out of supported range (${JalaliDate.MIN_GREGORIAN_YEAR}..-1 and 1..${JalaliDate.MAX_GREGORIAN_YEAR}).`
+            );
         }
     }
 
@@ -324,13 +338,14 @@ export class JalaliDate {
      * @throws {RangeError} If `year` is out of range or is 0.
      */
     protected static assertJalaliYearInRange(year: number): void {
-        if (!Number.isInteger(year) || year < JalaliDate.MIN_YEAR || year > JalaliDate.MAX_YEAR) {
-            throw new RangeError(
-                `Jalali year ${year} is out of range. Supported range: ${JalaliDate.MIN_YEAR}–${JalaliDate.MAX_YEAR}.`
-            );
+        if (!Number.isInteger(year) || year === 0) {
+            throw new RangeError('Year must be a non-zero integer in the Jalali calendar.');
         }
-        if (year === 0) {
-            throw new RangeError('Year 0 does not exist in the Jalali calendar.');
+
+        if (year < JalaliDate.MIN_YEAR || year > JalaliDate.MAX_YEAR) {
+            throw new RangeError(
+                `Jalali year ${year} is out of supported range (${JalaliDate.MIN_YEAR}..-1 and 1..${JalaliDate.MAX_YEAR}).`
+            );
         }
     }
 
@@ -342,7 +357,7 @@ export class JalaliDate {
      */
     protected static assertMonthInRange(month: number): void {
         if (!Number.isInteger(month) || month < 1 || month > 12) {
-            throw new RangeError(`Month ${month} is out of range. Valid range: 1–12.`);
+            throw new RangeError(`Month ${month} is out of valid range (1..12).`);
         }
     }
 
@@ -355,7 +370,7 @@ export class JalaliDate {
      */
     protected static assertDayInRange(day: number, maxDay: number): void {
         if (!Number.isInteger(day) || day < 1 || day > maxDay) {
-            throw new RangeError(`Day ${day} is out of range. Valid range: 1–${maxDay}.`);
+            throw new RangeError(`Day ${day} is out of valid range (1..${maxDay}).`);
         }
     }
 
@@ -367,7 +382,7 @@ export class JalaliDate {
      */
     protected static assertWeekNumberInRange(weekNumber: number): void {
         if (!Number.isInteger(weekNumber) || weekNumber < 1 || weekNumber > 53) {
-            throw new RangeError(`Week number ${weekNumber} is out of range. Valid range: 1–53.`);
+            throw new RangeError(`Week number ${weekNumber} is out of valid range (1..53).`);
         }
     }
 
@@ -379,7 +394,7 @@ export class JalaliDate {
      */
     protected static assertDayOfWeekInRange(dayOfWeek: number): void {
         if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
-            throw new RangeError(`Day of week ${dayOfWeek} is out of range. Valid range: 0–6.`);
+            throw new RangeError(`Day of week ${dayOfWeek} is out of valid range (0..6).`);
         }
     }
 
@@ -399,7 +414,7 @@ export class JalaliDate {
      * Returns the number of days from the start of the year to the start of
      * `month` (0-based).
      *
-     * @param month - Month number (1–12).
+     * @param month - Month number (1-12).
      * @returns 0-based day offset to the first day of `month`.
      */
     protected static daysToMonth(month: number): number {
@@ -433,10 +448,10 @@ export class JalaliDate {
     /**
      * Creates a JalaliDate from explicit Jalali year, month, and day.
      *
-     * @param year  - Jalali year (must be in [{@link JalaliDate.MIN_YEAR}, {@link JalaliDate.MAX_YEAR}]).
-     * @param month - Month (1 = Farvardin … 12 = Esfand).
+     * @param year  - Jalali year
+     * @param month - Month of year (1 = Farvardin … 12 = Esfand).
      * @param day   - Day of month (1-based).
-     * @throws {RangeError} If any component is out of range.
+     * @throws {RangeError} If the parameters do not form a valid Jalali date or the year is out of supported range.
      */
     constructor(year: number, month: number, day: number) {
         JalaliDate.assertJalaliYearInRange(year);
@@ -456,6 +471,7 @@ export class JalaliDate {
      * Returns today's Jalali date in Tehran time.
      *
      * @returns A `JalaliDate` representing the current civil date in Iran Standard Time.
+     * @throws {RangeError} If the current date is outside the supported range for Jalali dates.
      */
     static today(): JalaliDate {
         return JalaliDate.testToday ?? JalaliDate.fromUnixTime(Date.now());
@@ -465,6 +481,7 @@ export class JalaliDate {
      * Returns yesterday's Jalali date in Tehran time.
      *
      * @returns A `JalaliDate` representing yesterday's civil date in Iran Standard Time.
+     * @throws {RangeError} If the resulting date is outside the supported range for Jalali dates.
      */
     static yesterday(): JalaliDate {
         return JalaliDate.today().addDays(-1);
@@ -473,6 +490,7 @@ export class JalaliDate {
     /**
      * Returns tomorrow's Jalali date in Tehran time.
      * @returns A `JalaliDate` representing tomorrow's civil date in Iran Standard Time.
+     * @throws {RangeError} If the resulting date is outside the supported range for Jalali dates.
      */
     static tomorrow(): JalaliDate {
         return JalaliDate.today().addDays(1);
@@ -483,7 +501,7 @@ export class JalaliDate {
      *
      * @param jdn - Julian Day Number (integer).
      * @returns The corresponding `JalaliDate` for the given JDN.
-     * @throws {RangeError} If the JDN is outside the supported range for conversion to a Jalali date.
+     * @throws {RangeError} If the resulting date is outside the supported range for Jalali dates.
      */
     static fromJDN(jdn: number): JalaliDate {
         const year = JalaliDate.findYear(jdn);
@@ -502,6 +520,7 @@ export class JalaliDate {
      *
      * @param unixTime - Unix timestamp in milliseconds.
      * @return The corresponding `JalaliDate` in Tehran civil time.
+     * @throws {RangeError} If the resulting date is outside the supported range for Jalali dates.
      */
     static fromUnixTime(unixTime: number): JalaliDate {
         const jd = UNIX_EPOCH_JD + (unixTime + IRAN_OFFSET_MS) / MILLISECONDS_PER_DAY;
@@ -517,6 +536,7 @@ export class JalaliDate {
      *
      * @param date - A JavaScript `Date` object.
      * @returns The corresponding `JalaliDate` in Tehran civil time.
+     * @throws {RangeError} If the resulting date is outside the supported range for Jalali dates.
      */
     static fromDate(date: Date): JalaliDate {
         return JalaliDate.fromUnixTime(date.getTime());
@@ -528,7 +548,7 @@ export class JalaliDate {
      * @param year Jalali year
      * @param dayOfYear 1-based day of year (1 = 1 Farvardin)
      * @returns The corresponding `JalaliDate` for the given year and day-of-year.
-     * @throws {RangeError} If `year` is out of range or if `dayOfYear` is not in the valid range for that year.
+     * @throws {RangeError} If the parameters do not form a valid Jalali date or the year is out of supported range.
      */
     static fromDayOfYear(year: number, dayOfYear: number): JalaliDate {
         JalaliDate.assertJalaliYearInRange(year);
@@ -551,7 +571,7 @@ export class JalaliDate {
      * @param weekNumber - Week number (1-based, typically 1-52 or 1-53).
      * @param dayOfWeek - Day of week (0 = Sunday, …, 6 = Saturday). Can use {@link DayOfWeek} enum or a number.
      * @returns The corresponding `JalaliDate` for the given week and day.
-     * @throws {RangeError} If the parameters are out of range or the resulting date is invalid.
+     * @throws {RangeError} If the parameters are out of range or the resulting date is outside the supported range for Jalali dates.
      */
     static fromWeekOfYear(year: number, weekNumber: number, dayOfWeek: DayOfWeek | number): JalaliDate {
         JalaliDate.assertJalaliYearInRange(year);
@@ -599,7 +619,7 @@ export class JalaliDate {
      *              Can use {@link Occurrence} enum or a number.
      * @param dayOfWeek - Day of week (0 = Sunday, …, 6 = Saturday). Can use {@link DayOfWeek} enum or a number.
      * @returns The corresponding `JalaliDate` for the nth occurrence of the weekday in the month.
-     * @throws {RangeError} If the parameters are out of range or the nth occurrence doesn't exist in the month.
+     * @throws {RangeError} If the parameters are out of range or if the specified occurrence does not exist in the month, or if the resulting date is outside the supported range for Jalali dates.
      */
     static fromNthWeekdayOfMonth(year: number, month: number, nth: Occurrence | number, dayOfWeek: DayOfWeek | number): JalaliDate {
         JalaliDate.assertJalaliYearInRange(year);
@@ -642,10 +662,10 @@ export class JalaliDate {
      * Creates a JalaliDate from a Gregorian date.
      *
      * @param year  - Proleptic Gregorian year.
-     * @param month - Gregorian month (1–12).
+     * @param month - Gregorian month (1-12).
      * @param day   - Gregorian day of month (1-based).
      * @returns The corresponding Jalali date as a `JalaliDate`.
-     * @throws {RangeError} If the Gregorian date is invalid or out of supported range.
+     * @throws {RangeError} If the Gregorian date is invalid, or if the resulting Jalali date is outside the supported range for Jalali dates.
      */
     static fromGregorian(year: number, month: number, day: number): JalaliDate {
         JalaliDate.assertGregorianYearInRange(year);
@@ -662,7 +682,7 @@ export class JalaliDate {
      * @param isoString - The Gregorian date string in "YYYY-MM-DD" format.
      * @returns The corresponding `JalaliDate` for the given Gregorian date string.
      * @throws {Error} If the input string is not in the correct format.
-     * @throws {RangeError} If the Gregorian date is invalid or out of supported range.
+     * @throws {RangeError} if the Gregorian date is invalid, or if the resulting Jalali date is outside the supported range for Jalali dates.
      */
     static fromIsoDateString(isoString: string): JalaliDate {
         const match = isoString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -703,8 +723,8 @@ export class JalaliDate {
      * @param str     - The input string.
      * @param pattern - Format pattern. Defaults to `'YYYY/M/D'`.
      * @returns A `JalaliDate` parsed from the string.
-     * @throws {Error} If parsing fails.
-     * @throws {RangeError} If the resulting date is out of range.
+     * @throws {Error} If the input string does not match the pattern or if named components do not match the resulting date.
+     * @throws {RangeError} If the parsed date is outside the supported range for Jalali dates.
      */
     static parse(str: string, pattern = 'YYYY/M/D'): JalaliDate {
         const cleanStr = str.replace(/[\u200E\u200F\u061C\u202A-\u202E]/g, '').trim();
@@ -785,8 +805,6 @@ export class JalaliDate {
     /**
      * Returns `true` if the given year, month, and day form a valid Jalali date.
      *
-     * Unlike the constructor, this method does not throw an error for invalid dates.
-     *
      * @param year - Jalali year.
      * @param month - Month (1-12).
      * @param day - Day of month (1-based).
@@ -818,9 +836,9 @@ export class JalaliDate {
      * Returns the number of days in the given month of the given Jalali year.
      *
      * @param year  - Jalali year.
-     * @param month - Month number (1–12).
-     * @returns Number of days in the month (29–31).
-     * @throws {RangeError} If `month` is outside 1–12 or `year` is invalid.
+     * @param month - Month number (1-12).
+     * @returns Number of days in the month (29-31).
+     * @throws {RangeError} If `year` is outside the supported range or is 0, or if `month` is not in the range 1-12.
      */
     static daysInMonth(year: number, month: number): number {
         JalaliDate.assertJalaliYearInRange(year);
@@ -896,6 +914,15 @@ export class JalaliDate {
         JalaliDate.testToday = testToday;
     }
 
+    /**
+     * Gets the currently set test date for "today", if any.
+     *
+     * @returns The fixed Jalali date set for testing, or `null` if no override is set.
+     */
+    static getTestToday(): JalaliDate | null {
+        return JalaliDate.testToday;
+    }
+
     // ---------------------------------------------------------------------------
     // Computed properties
     // ---------------------------------------------------------------------------
@@ -960,7 +987,7 @@ export class JalaliDate {
     }
 
     /**
-     * Number of days in this month (29–31).
+     * Number of days in this month (29-31).
      */
     get daysInMonth(): number {
         return JalaliDate.daysInMonth(this.year, this.month);

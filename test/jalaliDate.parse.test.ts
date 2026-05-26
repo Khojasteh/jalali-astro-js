@@ -133,8 +133,8 @@ describe('JalaliDate.parse', () => {
                 () => JalaliDate.parse(input, pattern),
                 Error,
                 pattern === undefined
-                    ? `Expected parse(${JSON.stringify(input)}) to throw`
-                    : `Expected parse(${JSON.stringify(input)}, ${JSON.stringify(pattern)}) to throw`
+                    ? `Expected parse('${input}') to throw`
+                    : `Expected parse('${input}', '${pattern}') to throw`
             );
         }
     });

@@ -39,19 +39,11 @@ function assertAlmostEqualJD(
 
 describe('vernalEquinoxJD', () => {
     it('rejects years below MEEUS_MIN_YEAR', () => {
-        assert.throws(
-            () => vernalEquinoxJD(MEEUS_MIN_YEAR - 1),
-            RangeError,
-            `Expected vernalEquinoxJD(${MEEUS_MIN_YEAR - 1}) to throw`
-        );
+        assert.throws(() => vernalEquinoxJD(MEEUS_MIN_YEAR - 1), RangeError);
     });
 
     it('rejects years above MEEUS_MAX_YEAR', () => {
-        assert.throws(
-            () => vernalEquinoxJD(MEEUS_MAX_YEAR + 1),
-            RangeError,
-            `Expected vernalEquinoxJD(${MEEUS_MAX_YEAR + 1}) to throw`
-        );
+        assert.throws(() => vernalEquinoxJD(MEEUS_MAX_YEAR + 1), RangeError);
     });
 
     it('accepts year at MEEUS_MIN_YEAR', () => {
