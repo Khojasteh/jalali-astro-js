@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { JalaliDate } from '../src/jalaliDate.ts';
 
-describe('startOfYear', () => {
+describe('JalaliDate.startOfYear', () => {
     it('returns start of a common year', () => {
         const date = new JalaliDate(1402, 6, 15);
         const start = date.startOfYear();
@@ -27,7 +27,7 @@ describe('startOfYear', () => {
     });
 });
 
-describe('endOfYear', () => {
+describe('JalaliDate.endOfYear', () => {
     it('returns end of a common year', () => {
         const date = new JalaliDate(1402, 6, 15);
         const end = date.endOfYear();
@@ -48,7 +48,7 @@ describe('endOfYear', () => {
     });
 });
 
-describe('startOfMonth', () => {
+describe('JalaliDate.startOfMonth', () => {
     it('returns start of month', () => {
         const date = new JalaliDate(1402, 6, 15);
         const start = date.startOfMonth();
@@ -56,7 +56,7 @@ describe('startOfMonth', () => {
     });
 });
 
-describe('endOfMonth', () => {
+describe('JalaliDate.endOfMonth', () => {
     it('returns end of 31-day month', () => {
         const date = new JalaliDate(1402, 6, 15);
         const end = date.endOfMonth();
@@ -82,7 +82,7 @@ describe('endOfMonth', () => {
     });
 });
 
-describe('startOfWeek', () => {
+describe('JalaliDate.startOfWeek', () => {
     it('returns Saturday as start of week', () => {
         const wednesday = new JalaliDate(1403, 1, 1);
         assert.equal(wednesday.dayOfWeek, 3);
@@ -97,7 +97,7 @@ describe('startOfWeek', () => {
     });
 });
 
-describe('endOfWeek', () => {
+describe('JalaliDate.endOfWeek', () => {
     it('returns Friday as end of week', () => {
         const wednesday = new JalaliDate(1403, 1, 1);
         assert.equal(wednesday.dayOfWeek, 3);
@@ -117,7 +117,7 @@ describe('endOfWeek', () => {
     });
 });
 
-describe('startOfQuarter', () => {
+describe('JalaliDate.startOfQuarter', () => {
     const cases: Array<[JalaliDate, { year: number; month: number; day: number }]> = [
         [new JalaliDate(1403, 2, 15), { year: 1403, month: 1, day: 1 }],
         [new JalaliDate(1403, 5, 20), { year: 1403, month: 4, day: 1 }],
@@ -134,7 +134,7 @@ describe('startOfQuarter', () => {
     }
 });
 
-describe('endOfQuarter', () => {
+describe('JalaliDate.endOfQuarter', () => {
     const cases: Array<[JalaliDate, { year: number; month: number; day: number }]> = [
         [new JalaliDate(1403, 2, 15), { year: 1403, month: 3, day: 31 }],
         [new JalaliDate(1403, 5, 20), { year: 1403, month: 6, day: 31 }],

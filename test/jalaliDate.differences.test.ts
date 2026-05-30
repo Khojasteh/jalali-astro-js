@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { JalaliDate } from '../src/jalaliDate.ts';
 
-describe('differenceInDays', () => {
+describe('JalaliDate.differenceInDays', () => {
     const cases: Array<[JalaliDate, JalaliDate, number]> = [
         [new JalaliDate(1403, 5, 1), new JalaliDate(1403, 5, 11), 10],
         [new JalaliDate(1403, 5, 11), new JalaliDate(1403, 5, 1), -10],
@@ -31,7 +31,7 @@ describe('differenceInDays', () => {
     });
 });
 
-describe('differenceInMonths', () => {
+describe('JalaliDate.differenceInMonths', () => {
     const cases: Array<[JalaliDate, JalaliDate, number]> = [
         [new JalaliDate(1403, 1, 15), new JalaliDate(1403, 5, 15), 4],
         [new JalaliDate(1403, 5, 15), new JalaliDate(1403, 1, 15), -4],
@@ -50,7 +50,7 @@ describe('differenceInMonths', () => {
     }
 });
 
-describe('differenceInYears', () => {
+describe('JalaliDate.differenceInYears', () => {
     const cases: Array<[JalaliDate, JalaliDate, number]> = [
         [new JalaliDate(1400, 5, 15), new JalaliDate(1403, 5, 15), 3],
         [new JalaliDate(1403, 5, 15), new JalaliDate(1400, 5, 15), -3],

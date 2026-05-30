@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { JalaliDate } from '../src/jalaliDate.ts';
 
-describe('equals', () => {
+describe('JalaliDate.equals', () => {
     it('returns true for identical dates', () => {
         const date1 = new JalaliDate(1402, 3, 10);
         const date2 = new JalaliDate(1402, 3, 10);
@@ -20,7 +20,7 @@ describe('equals', () => {
     });
 });
 
-describe('compareTo', () => {
+describe('JalaliDate.compareTo', () => {
     it('returns 0 for equal dates', () => {
         const date1 = new JalaliDate(1402, 3, 10);
         const date2 = new JalaliDate(1402, 3, 10);
@@ -53,7 +53,7 @@ describe('compareTo', () => {
     });
 });
 
-describe('isBefore', () => {
+describe('JalaliDate.isBefore', () => {
     it('returns false for equal dates', () => {
         const date1 = new JalaliDate(1402, 3, 10);
         const date2 = new JalaliDate(1402, 3, 10);
@@ -86,7 +86,7 @@ describe('isBefore', () => {
     });
 });
 
-describe('isAfter', () => {
+describe('JalaliDate.isAfter', () => {
     it('returns false for equal dates', () => {
         const date1 = new JalaliDate(1402, 3, 10);
         const date2 = new JalaliDate(1402, 3, 10);
@@ -119,7 +119,7 @@ describe('isAfter', () => {
     });
 });
 
-describe('isBetween', () => {
+describe('JalaliDate.isBetween', () => {
     const start = new JalaliDate(1403, 5, 1);
     const middle = new JalaliDate(1403, 5, 15);
     const end = new JalaliDate(1403, 5, 31);
@@ -162,7 +162,7 @@ describe('isBetween', () => {
     });
 });
 
-describe('isSameYear', () => {
+describe('JalaliDate.isSameYear', () => {
     it('returns true for identical dates', () => {
         const date1 = new JalaliDate(1403, 5, 15);
         const date2 = new JalaliDate(1403, 5, 15);
@@ -195,7 +195,7 @@ describe('isSameYear', () => {
     });
 });
 
-describe('isSameMonth', () => {
+describe('JalaliDate.isSameMonth', () => {
     it('returns true for identical dates', () => {
         const date1 = new JalaliDate(1403, 5, 15);
         const date2 = new JalaliDate(1403, 5, 15);
@@ -233,7 +233,7 @@ describe('isSameMonth', () => {
     });
 });
 
-describe('isSameWeek', () => {
+describe('JalaliDate.isSameWeek', () => {
     it('returns true for identical dates', () => {
         const date1 = new JalaliDate(1403, 5, 15);
         const date2 = new JalaliDate(1403, 5, 15);
@@ -285,7 +285,7 @@ describe('isSameWeek', () => {
     });
 });
 
-describe('isSameQuarter', () => {
+describe('JalaliDate.isSameQuarter', () => {
     it('returns true for identical dates', () => {
         const date1 = new JalaliDate(1403, 5, 15);
         const date2 = new JalaliDate(1403, 5, 15);

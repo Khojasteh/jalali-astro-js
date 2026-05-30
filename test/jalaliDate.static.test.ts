@@ -49,7 +49,7 @@ describe('JalaliDate.isValidDate', () => {
     });
 });
 
-describe('JalaliDate.daysInMonth', () => {
+describe('JalaliDate.daysInMonth (static)', () => {
     it('returns 31 for months 1 through 6', () => {
         for (let month = 1; month <= 6; month++) {
             assert.equal(JalaliDate.daysInMonth(1403, month), 31);
@@ -85,7 +85,7 @@ describe('JalaliDate.daysInMonth', () => {
     });
 });
 
-describe('JalaliDate.daysInYear', () => {
+describe('JalaliDate.daysInYear (static)', () => {
     it('returns 366 days for all known leap years', () => {
         for (const year of KNOWN_LEAP_YEARS) {
             assert.equal(JalaliDate.daysInYear(year), 366);
@@ -139,7 +139,7 @@ describe('JalaliDate.daysInYear', () => {
     });
 });
 
-describe('JalaliDate.isLeapYear', () => {
+describe('JalaliDate.isLeapYear (static)', () => {
     it('returns true for all known leap years', () => {
         for (const year of KNOWN_LEAP_YEARS) {
             assert.equal(JalaliDate.isLeapYear(year), true);

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { JalaliDate, DayOfWeek, Quarter } from '../src/jalaliDate.ts';
 import { gregorianToJDN } from '../src/julianDay.ts';
 
-describe('jdn', () => {
+describe('JalaliDate.jdn', () => {
     it('matches known Gregorian JDN anchors through conversion', () => {
         assert.equal(new JalaliDate(1403, 1, 1).jdn, gregorianToJDN(2024, 3, 20));
         assert.equal(new JalaliDate(1404, 1, 1).jdn, gregorianToJDN(2025, 3, 21));
@@ -24,7 +24,7 @@ describe('jdn', () => {
     });
 });
 
-describe('daysInMonth', () => {
+describe('JalaliDate.daysInMonth', () => {
     it('reports correct days in month for common year', () => {
         const common = new JalaliDate(1402, 12, 1);
         assert.equal(common.daysInMonth, 29);
@@ -36,7 +36,7 @@ describe('daysInMonth', () => {
     });
 });
 
-describe('daysInYear', () => {
+describe('JalaliDate.daysInYear', () => {
     it('reports correct days in year for common year', () => {
         const common = new JalaliDate(1402, 12, 1);
         assert.equal(common.daysInYear, 365);
@@ -48,7 +48,7 @@ describe('daysInYear', () => {
     });
 });
 
-describe('isLeapYear', () => {
+describe('JalaliDate.isLeapYear', () => {
     it('identifies common year correctly', () => {
         const common = new JalaliDate(1402, 12, 1);
         assert.equal(common.isLeapYear, false);
@@ -60,7 +60,7 @@ describe('isLeapYear', () => {
     });
 });
 
-describe('dayOfYear', () => {
+describe('JalaliDate.dayOfYear', () => {
     const cases: Array<[JalaliDate, number]> = [
         [new JalaliDate(1402, 1, 1), 1],
         [new JalaliDate(1402, 1, 31), 31],
@@ -78,7 +78,7 @@ describe('dayOfYear', () => {
     }
 });
 
-describe('dayOfWeek', () => {
+describe('JalaliDate.dayOfWeek', () => {
     const cases: Array<[JalaliDate, DayOfWeek]> = [
         [new JalaliDate(1403, 1, 1), DayOfWeek.Wednesday],
         [new JalaliDate(1403, 1, 2), DayOfWeek.Thursday],
@@ -96,7 +96,7 @@ describe('dayOfWeek', () => {
     }
 });
 
-describe('dayOfWeekName', () => {
+describe('JalaliDate.dayOfWeekName', () => {
     const cases: Array<[JalaliDate, string]> = [
         [new JalaliDate(1403, 1, 1), 'چهارشنبه'],
         [new JalaliDate(1403, 1, 2), 'پنجشنبه'],
@@ -114,7 +114,7 @@ describe('dayOfWeekName', () => {
     }
 });
 
-describe('weekOfYear', () => {
+describe('JalaliDate.weekOfYear', () => {
     it('uses Saturday-start weeks for weekOfYear', () => {
         assert.equal(new JalaliDate(1403, 1, 1).weekOfYear, 1);
         assert.equal(new JalaliDate(1403, 1, 3).weekOfYear, 1);
@@ -138,7 +138,7 @@ describe('weekOfYear', () => {
     });
 });
 
-describe('weekOfMonth', () => {
+describe('JalaliDate.weekOfMonth', () => {
     it('uses Saturday-start weeks for weekOfMonth', () => {
         assert.equal(new JalaliDate(1403, 1, 1).weekOfMonth, 1);
         assert.equal(new JalaliDate(1403, 1, 3).weekOfMonth, 1);
@@ -147,7 +147,7 @@ describe('weekOfMonth', () => {
     });
 });
 
-describe('monthName', () => {
+describe('JalaliDate.monthName', () => {
     const months = [
         'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
         'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند',
@@ -161,7 +161,7 @@ describe('monthName', () => {
     }
 });
 
-describe('quarter', () => {
+describe('JalaliDate.quarter', () => {
     const cases: Array<[number, Quarter]> = [
         [1, Quarter.Spring],
         [2, Quarter.Spring],
@@ -185,7 +185,7 @@ describe('quarter', () => {
     }
 });
 
-describe('quarterName', () => {
+describe('JalaliDate.quarterName', () => {
     const quarters = ['بهار', 'تابستان', 'پاییز', 'زمستان'];
     for (let month = 1; month <= 12; month++) {
         it(`month ${month} has correct quarter name`, () => {

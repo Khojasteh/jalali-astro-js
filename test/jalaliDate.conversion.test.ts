@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { JalaliDate } from '../src/jalaliDate.ts';
 
-describe('toGregorian', () => {
+describe('JalaliDate.toGregorian', () => {
     const cases: Array<{
         jalali: JalaliDate;
         gregorian: { year: number; month: number; day: number };
@@ -47,7 +47,7 @@ describe('toGregorian', () => {
     });
 });
 
-describe('toArray', () => {
+describe('JalaliDate.toArray', () => {
     it('returns [year, month, day] for a typical date', () => {
         const d = new JalaliDate(1402, 3, 10);
         assert.deepEqual(d.toArray(), [1402, 3, 10]);
@@ -72,7 +72,7 @@ describe('toArray', () => {
     });
 });
 
-describe('toObject', () => {
+describe('JalaliDate.toObject', () => {
     it('returns a plain object with year, month, and day', () => {
         const date = new JalaliDate(1402, 6, 15);
         assert.deepEqual(date.toObject(), { year: 1402, month: 6, day: 15 });
@@ -93,7 +93,7 @@ describe('toObject', () => {
     });
 });
 
-describe('toIsoDateString', () => {
+describe('JalaliDate.toIsoDateString', () => {
     it('returns the Gregorian ISO date for the Jalali date', () => {
         assert.equal(new JalaliDate(1403, 1, 1).toIsoDateString(), '2024-03-20');
         assert.equal(new JalaliDate(1404, 1, 1).toIsoDateString(), '2025-03-21');

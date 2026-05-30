@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { JalaliDate } from '../src/jalaliDate.ts';
 
-describe('addDays', () => {
+describe('JalaliDate.addDays', () => {
     const cases: Array<{
         start: JalaliDate;
         days: number;
@@ -80,7 +80,7 @@ describe('addDays', () => {
     });
 });
 
-describe('addMonths', () => {
+describe('JalaliDate.addMonths', () => {
     const cases: Array<{
         start: JalaliDate;
         months: number;
@@ -139,7 +139,7 @@ describe('addMonths', () => {
     });
 });
 
-describe('addYears', () => {
+describe('JalaliDate.addYears', () => {
     const cases: Array<{
         start: JalaliDate;
         years: number;

@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { JalaliDate } from '../src/jalaliDate.ts';
 
-describe('withYear', () => {
+describe('JalaliDate.withYear', () => {
     it('changes only the year when the original day exists in the target year', () => {
         const original = new JalaliDate(1403, 5, 15);
         const changed = original.withYear(1400);
@@ -52,7 +52,7 @@ describe('withYear', () => {
     });
 });
 
-describe('withMonth', () => {
+describe('JalaliDate.withMonth', () => {
     it('changes only the month when the original day exists in the target month', () => {
         const original = new JalaliDate(1403, 5, 15);
         const changed = original.withMonth(8);
@@ -88,7 +88,7 @@ describe('withMonth', () => {
     });
 });
 
-describe('withDay', () => {
+describe('JalaliDate.withDay', () => {
     it('changes only the day', () => {
         const original = new JalaliDate(1403, 5, 15);
         const changed = original.withDay(20);
