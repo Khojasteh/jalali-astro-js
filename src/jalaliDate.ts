@@ -75,6 +75,11 @@ const MILLISECONDS_PER_DAY = 86400 * 1000;
 const IRAN_OFFSET_MS = (3 * 60 + 30) * 60 * 1000;
 
 /**
+ * Mean length of a Jalali year in days.
+ */
+const MEAN_JALALI_YEAR_DAYS = 365.24219858156;
+
+/**
  * Names of the days of the week in Persian, following the JS Date convention:
  * 0=Sunday, 1=Monday, …, 6=Saturday.
  */
@@ -83,17 +88,17 @@ const DOW_NAMES_FA: ReadonlyArray<string> = [
 ];
 
 /**
+ * Names of the Jalali quarters (seasons) in Persian.
+ */
+const QUARTER_NAMES_FA: ReadonlyArray<string> = [
+    'بهار', 'تابستان', 'پاییز', 'زمستان'
+];
+
+/**
  * Names of the Jalali months in Persian.
  */
 const MONTH_NAMES_FA: ReadonlyArray<string> = [
     'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
-];
-
-/**
- * Names of the Jalali quarters in Persian.
- */
-const QUARTER_NAMES_FA: ReadonlyArray<string> = [
-    'بهار', 'تابستان', 'پاییز', 'زمستان'
 ];
 
 /**
@@ -422,23 +427,52 @@ export class JalaliDate {
     }
 
     /**
-     * Binary-searches for the Jalali year whose Nowruz JDN is ≤ `jdn`
-     * and whose next Nowruz JDN is > `jdn`.
+     * Finds the Jalali year that contains the given Julian Day Number (JDN).
      *
      * @param jdn - Julian Day Number to locate within a Jalali year.
-     * @returns The Jalali year that contains `jdn`.
+     * @returns The Jalali year that contains `jdn`, or 0 if `jdn` is out of range.
+     * @throws {RangeError} If `jdn` is not an integer.
      */
     protected static findYear(jdn: number): number {
-        // Work in astronomical year space (continuous, includes 0) to avoid
-        // accidentally computing mid = 0 which is not a valid Jalali year.
-        let lo = toAstronomicalYear(JalaliDate.MIN_YEAR);
-        let hi = toAstronomicalYear(JalaliDate.MAX_YEAR);
-        while (lo < hi) {
-            const mid = Math.ceil((lo + hi) / 2);
-            if (nowruzJDN(toCalendarYear(mid)) <= jdn) lo = mid;
-            else hi = mid - 1;
+        if (!Number.isInteger(jdn)) {
+            throw new RangeError(`Julian Day Number must be an integer, got ${jdn}.`);
         }
-        return toCalendarYear(lo);
+
+        const minJDN = nowruzJDN(JalaliDate.MIN_YEAR);
+        if (jdn < minJDN) {
+            return 0;
+        }
+
+        const maxJDN = nowruzJDN(JalaliDate.MAX_YEAR + 1);
+        if (jdn >= maxJDN) {
+            return 0;
+        }
+
+        const minAstronomicalYear = toAstronomicalYear(JalaliDate.MIN_YEAR);
+        const maxAstronomicalYear = toAstronomicalYear(JalaliDate.MAX_YEAR);
+
+        // Approximate using the mean Jalali year length.
+        let y = minAstronomicalYear + Math.trunc((jdn - minJDN) / MEAN_JALALI_YEAR_DAYS);
+
+        // Clamp in case floating-point estimation lands just outside the range.
+        if (y < minAstronomicalYear) {
+            y = minAstronomicalYear;
+        }
+        if (y > maxAstronomicalYear) {
+            y = maxAstronomicalYear;
+        }
+
+        // Adjust downward if the Nowruz of the estimated year is after the JDN.
+        while (nowruzJDN(toCalendarYear(y)) > jdn) {
+            --y;
+        }
+
+        // Adjust upward if the Nowruz of the next year is on or before the JDN.
+        while (nowruzJDN(toCalendarYear(y + 1)) <= jdn) {
+            ++y;
+        }
+
+        return toCalendarYear(y);
     }
 
     // ---------------------------------------------------------------------------
@@ -505,7 +539,7 @@ export class JalaliDate {
      */
     static fromJDN(jdn: number): JalaliDate {
         const year = JalaliDate.findYear(jdn);
-        if (year === 0 || year < JalaliDate.MIN_YEAR || year > JalaliDate.MAX_YEAR) {
+        if (year === 0) {
             throw new RangeError(
                 `Julian Day Number ${jdn} is out of range for conversion to Jalali date.`
             );
