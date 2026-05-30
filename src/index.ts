@@ -5,4 +5,15 @@
  * Public API.
  */
 
-export { JalaliDate, DayOfWeek, Occurrence, Quarter } from './jalaliDate.ts';
+export {
+    JalaliDate,
+    DayOfWeek,
+    Occurrence,
+    Quarter
+} from './jalaliDate.ts';
+
+export type {
+    DateComponents,
+    FormatOptions,
+    ParseOptions
+} from './jalaliDate.ts';

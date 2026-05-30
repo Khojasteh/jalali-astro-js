@@ -62,8 +62,9 @@ The astronomical calculation is supported from 1001 BCE through 3000 CE in the p
 
 **Formatting and parsing**
 * Format dates with Persian month names, weekday names, quarter names, and Persian-Indic digits
+* Include corresponding Gregorian date components with scoped calendar blocks such as `[gregorian:YYYY/MM/DD]`
 * Parse dates with Persian or Latin digits
-* Pattern-based parsing with validation of month names, weekday names, and quarter names
+* Pattern-based parsing with validation of month names, weekday names, quarter names, and scoped Gregorian components
 * Optional Right-to-Left Mark handling for correct display of Persian text
 
 **Quality and compatibility**
@@ -112,6 +113,10 @@ console.log(date.weekOfYear);      // 7
 // Formatting with Persian numerals and names
 console.log(date.format('DDDD D MMMM YYYY'));
 // "دوشنبه ۱۴ اردیبهشت ۱۴۰۵"
+
+// Include the corresponding Gregorian date with a scoped calendar block
+console.log(date.format('DDDD، YYYY/MM/DD برابر با [gregorian:YYYY/MM/DD میلادی]'));
+// "دوشنبه ۱۴۰۵/۰۲/۱۴ برابر با ۲۰۲۶/۰۵/۰۴ میلادی"
 
 // Parsing (supports Persian and Latin digits)
 const parsed1 = JalaliDate.parse('1405/02/14');
@@ -325,37 +330,99 @@ const date = JalaliDate.fromJDN(2460756);
 
 Throws `RangeError` if the Julian Day Number is outside the supported conversion range.
 
-#### `JalaliDate.parse(str, pattern)`
+#### `JalaliDate.parse(str, pattern?, options?)`
 
 Parses a Jalali date string using a format pattern. The default pattern is `YYYY/M/D`.
 
-Supported tokens in the pattern are:
+Format tokens outside a scoped calendar block use the Jalali calendar. The same is true inside an explicit `[jalali:...]` block. Gregorian components can be included with a `[gregorian:...]` block and are validated against the parsed Jalali date.
 
-| Token  | Meaning                  |
-| ------ | ------------------------ |
-| `YY`   | 2-digit year             |
-| `YYYY` | Full year                |
-| `M`    | Month number             |
-| `MM`   | Zero-padded month number |
-| `MMMM` | Persian month name       |
-| `D`    | Day of month             |
-| `DD`   | Zero-padded day of month |
-| `DDDD` | Persian weekday name     |
-| `Q`    | Persian quarter name     |
+##### Pattern tokens
+
+| Token  | Jalali meaning                       | Gregorian block meaning                                |
+| ------ | ------------------------------------ | ------------------------------------------------------ |
+| `YY`   | 2-digit Jalali year                  | 2-digit Gregorian year                                 |
+| `YYYY` | Full Jalali year                     | Full Gregorian year                                    |
+| `M`    | Jalali month number                  | Gregorian month number                                 |
+| `MM`   | Zero-padded Jalali month number      | Zero-padded Gregorian month number                     |
+| `MMMM` | Persian Jalali month name            | Persian Gregorian month name                           |
+| `D`    | Jalali day of month                  | Gregorian day of month                                 |
+| `DD`   | Zero-padded Jalali day of month      | Zero-padded Gregorian day of month                     |
+| `DDDD` | Persian weekday name                 | Persian weekday name                                   |
+| `Q`    | Persian Jalali quarter (season) name | Literal `Q`; Gregorian quarter names are not supported |
+
+Jalali year/month/day tokens are required to construct a `JalaliDate`.
+
+##### Pattern syntax
+
+Scoped calendar blocks are defined with square brackets and a calendar name prefix followed by a colon. Nested blocks are not supported.
+
+| Syntax                   | Meaning                                  |
+| ------------------------ | -----------------------------------------|
+| `YYYY/MM/DD`             | Implied Jalali calendar block (default)  |
+| `[jalali:YYYY/MM/DD]`    | Explicit Jalali calendar block           |
+| `[gregorian:YYYY/MM/DD]` | Gregorian calendar block                 |
+| `[[`                     | Literal `[`                              |
+| `]]`                     | Literal `]`                              |
+| `'text'` or `"text"`     | Quoted literal text                      |
 
 The parser follows these rules:
-- Both Persian and Latin digits are accepted in the input string for numeric fields.
-- Quoted text in single or double quotes is matched literally.
-- Day of week (`DDDD`) and quarter (`Q`) names are validated against the resulting date when present.
-- Bidirectional control characters (RLM, LRM, etc.) are automatically stripped from both the input string and pattern.
-- Leading and trailing whitespace in both the input string and pattern is ignored.
+
+- Persian-Indic and Latin digits are accepted in numeric fields.
+- By default, bidirectional control characters (RLM, LRM, ALM, embedding/override marks, etc.) are stripped from both the input string and the pattern. If the `preserveBidiControls` option is enabled, they are preserved instead.
+- By default, leading/trailing whitespace is ignored and consecutive whitespace is collapsed to a single space in both the input string and the pattern. If the `preserveWhitespace` option is enabled, whitespace is preserved exactly as-is instead.
+- Quoted text in single or double quotes is matched literally after the selected normalization rules have been applied.
+- Day-of-week names, quarter names, and scoped Gregorian components are validated by default against the parsed date. If the `skipValidation` option is enabled, they are not validated, but they must still match the expected pattern shape.
+- Literal square brackets must be written as `[[` and `]]` if they are outside of a quoted literal.
+
+##### Parse options
+
+```ts
+interface ParseOptions {
+  preserveBidiControls?: boolean;
+  preserveWhitespace?: boolean;
+  skipValidation?: boolean;
+}
+```
+
+| Option                 | Default | Description                                                                                                                      |
+| ---------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `preserveBidiControls` | `false` | Preserve bidirectional control characters instead of stripping them.                                                             |
+| `preserveWhitespace`   | `false` | Preserve whitespace exactly instead of trimming and collapsing it.                                                               |
+| `skipValidation`       | `false` | Skip validation of day-of-week names, quarter names, and scoped Gregorian tokens. The values still must match the pattern shape. |
+
+##### Examples
 
 ```ts
 const date = JalaliDate.parse('جمعه ۱ فروردین ۱۴۰۴', 'DDDD D MMMM YYYY');
 console.log(date.toString()); // "1404/01/01"
+
+const mixed = JalaliDate.parse(
+  '‏۱۴۰۴/۰۱/۰۱ برابر با ۲۰۲۵/۰۳/۲۱ میلادی',
+  'YYYY/MM/DD برابر با [gregorian:YYYY/MM/DD] میلادی'
+);
+console.log(mixed.toString()); // "1404/01/01"
+
+const withLiteralBrackets = JalaliDate.parse('تاریخ: [۱۴۰۴/۰۱/۰۱]', '"تاریخ:" [[YYYY/MM/DD]]');
+console.log(withLiteralBrackets.toString()); // "1404/01/01"
+
+// Default parsing is forgiving about repeated whitespace.
+const forgiving = JalaliDate.parse('۱۴۰۴ /  ۱ /  ۱', 'YYYY / M / D');
+console.log(forgiving.toString()); // "1404/01/01"
+
+// Strict whitespace matching.
+const strict = JalaliDate.parse('۱۴۰۴\t۱\t۱', 'YYYY\tM\ttD', { preserveWhitespace: true });
+console.log(strict.toString()); // "1404/01/01"
+
+// Match day-of-week / quarter / Gregorian fields without validating their values.
+const skipValidation =JalaliDate.parse(
+  '‏۱۴۰۴/۰۱/۰۱ برابر با ۲۰۲۵/۰۳/۲۲ میلادی',
+  'YYYY/MM/DD برابر با [gregorian:YYYY/MM/DD] میلادی',
+  { skipValidation: true }
+);
+console.log(skipValidation.toString()); // "1404/01/01"
 ```
 
-Throws `Error` if the input string doesn't match the pattern, contains invalid names, or includes a weekday or quarter that does not match the parsed date.
+Throws `Error` if the pattern is malformed, the input string does not match the pattern, required Jalali date components cannot be extracted, or a validated day-of-week, quarter, or Gregorian component does not match the parsed date.
 
 Throws `RangeError` if the resulting date is invalid or out of supported range.
 
@@ -413,7 +480,7 @@ const ageAtDate = JalaliDate.age(birthDate, new JalaliDate(1403, 5, 15)); // Age
 | `date.year`          | Jalali year.                                                                         |
 | `date.month`         | Jalali month, from `1` to `12`.                                                      |
 | `date.day`           | Jalali day of month.                                                                 |
-| `date.quarter`       | Quarter of the year: `Quarter.Spring`, `Quarter.Summer`, `Quarter.Autumn`, or `Quarter.Winter`. |
+| `date.quarter`       | Quarter (season) of the date, from `1` to `4`.                                       |
 | `date.jdn`           | Julian Day Number for the date.                                                      |
 | `date.weekOfYear`    | 1-based week number. Week 1 contains 1 Farvardin.                                    |
 | `date.weekOfMonth`   | 1-based week number of the month. Week 1 contains day 1.                             |
@@ -600,42 +667,99 @@ date2.differenceInDays(date1);   // Negative number (past)
 
 #### `date.format(pattern, options?)`
 
-Formats the date using Persian month names, Persian weekday names, and Persian-Indic digits for numeric fields.
+Formats a `JalaliDate` using a format pattern.
 
-Supported tokens in the pattern are:
+Format tokens outside a scoped calendar block use the Jalali calendar. The same is true inside an explicit `[jalali:...]` block. Gregorian components can be included with a `[gregorian:...]` block and are formatted from the corresponding Gregorian date.
 
-| Token  | Meaning                  |
-| ------ | ------------------------ |
-| `YY`   | 2-digit year             |
-| `YYYY` | Full year                |
-| `M`    | Month number             |
-| `MM`   | Zero-padded month number |
-| `MMMM` | Persian month name       |
-| `D`    | Day of month             |
-| `DD`   | Zero-padded day of month |
-| `DDDD` | Persian weekday name     |
-| `Q`    | Persian quarter name     |
+##### Pattern tokens
 
-The optional `options` object supports a single property:
+| Token  | Jalali meaning                       | Gregorian block meaning                                |
+| ------ | ------------------------------------ | ------------------------------------------------------ |
+| `YY`   | 2-digit Jalali year                  | 2-digit Gregorian year                                 |
+| `YYYY` | Full Jalali year                     | Full Gregorian year                                    |
+| `M`    | Jalali month number                  | Gregorian month number                                 |
+| `MM`   | Zero-padded Jalali month number      | Zero-padded Gregorian month number                     |
+| `MMMM` | Persian Jalali month name            | Persian Gregorian month name                           |
+| `D`    | Jalali day of month                  | Gregorian day of month                                 |
+| `DD`   | Zero-padded Jalali day of month      | Zero-padded Gregorian day of month                     |
+| `DDDD` | Persian weekday name                 | Persian weekday name                                   |
+| `Q`    | Persian Jalali quarter (season) name | Literal `Q`; Gregorian quarter names are not supported |
 
-- **`rlm`** — Controls insertion of the Right-to-Left Mark (U+200F):
-  - **`'never'`** — Do not add an RLM (default).
-  - **`'always'`** — Always prepend an RLM to the formatted string.
-  - **`'auto'`** — Prepend an RLM only when the formatted result begins with a Persian digit.
+##### Pattern syntax
 
-The RLM is important for correct display of bidirectional text when the formatted date starts with a Persian digit, ensuring that the date is rendered in the proper right-to-left context.
+Scoped calendar blocks are defined with square brackets and a calendar name prefix followed by a colon. Nested blocks are not supported.
+
+| Syntax                   | Meaning                                 |
+| ------------------------ | --------------------------------------- |
+| `YYYY/MM/DD`             | Implied Jalali calendar block (default) |
+| `[jalali:YYYY/MM/DD]`    | Explicit Jalali calendar block          |
+| `[gregorian:YYYY/MM/DD]` | Gregorian calendar block                |
+| `[[`                     | Literal `[`                             |
+| `]]`                     | Literal `]`                             |
+| `'text'` or `"text"`     | Quoted literal text                     |
+
+The formatter follows these rules:
+
+- Number fields are formatted using Persian-Indic digits.
+- Tokens outside scoped calendar blocks are formatted using the Jalali date.
+- Tokens inside `[jalali:...]` blocks are formatted using the Jalali date.
+- Tokens inside `[gregorian:...]` blocks are formatted using the corresponding Gregorian date.
+- Quoted text in single or double quotes is output literally, without the quote characters.
+- Literal square brackets must be written as `[[` and `]]` if they are outside of a quoted literal.
+
+##### Format options
 
 ```ts
-date.format('DDDD D MMMM YYYY');
-// "جمعه ۱ فروردین ۱۴۰۴"
-
-date.format('Q YYYY');
-// "بهار ۱۴۰۴"
-
-// With RLM (Right-to-Left Mark) for proper bidirectional text display
-date.format('D MMMM YYYY', { rlm: 'auto' });
-// "‏۱۴ اردیبهشت ۱۴۰۵" (with RLM prefix for correct RTL display)
+interface FormatOptions {
+  rlm?: 'never' | 'always' | 'auto';
+}
 ```
+
+| Option | Default   | Description                                                                          |
+| ------ | --------- | ------------------------------------------------------------------------------------ |
+| `rlm`  | `'never'` | Controls whether a Right-to-Left Mark (`U+200F`) is prepended to the formatted text. |
+
+`rlm` accepts:
+
+| Value      | Meaning                                                               |
+| ---------- | --------------------------------------------------------------------- |
+| `'never'`  | Never prepend RLM.                                                    |
+| `'always'` | Always prepend RLM.                                                   |
+| `'auto'`   | Prepend RLM only when the formatted text starts with a Persian digit. |
+
+```ts
+date.format('YYYY/MM/DD', 'auto');
+```
+
+##### Examples:
+
+```ts
+const date = new JalaliDate(1404, 1, 1);
+
+console.log(date.format('YYYY/MM/DD'));
+// "۱۴۰۴/۰۱/۰۱"
+
+console.log(date.format('[jalali:DDDD، D MMMM YYYY]'));
+// "جمعه، ۱ فروردین ۱۴۰۴"
+
+console.log(date.format('YYYY/MM/DD برابر با [gregorian:YYYY/MM/DD] میلادی'));
+// "۱۴۰۴/۰۱/۰۱ برابر با ۲۰۲۵/۰۳/۲۱ میلادی"
+
+console.log(date.format('D MMMM YYYY برابر با [gregorian:D MMMM YYYY]'));
+// "۱ فروردین ۱۴۰۴ برابر با ۲۱ مارس ۲۰۲۵"
+
+console.log(date.format('تاریخ: [[YYYY/MM/DD]]'));
+// "تاریخ: [۱۴۰۴/۰۱/۰۱]"
+
+console.log(date.format('"تاریخ:" YYYY/MM/DD'));
+// "تاریخ: ۱۴۰۴/۰۱/۰۱"
+
+console.log(date.format('YYYY/MM/DD', { rlm: 'auto' }));
+// "‏۱۴۰۴/۰۱/۰۱"
+```
+
+Throws `Error` if the pattern is malformed: contains an unsupported calendar scope, has an unclosed scoped block, has a nested scoped block, has an unmatched closing bracket, or has an unclosed quoted literal.
+
 
 #### `date.toString()`
 

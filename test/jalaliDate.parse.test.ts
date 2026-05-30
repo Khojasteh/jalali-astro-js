@@ -25,6 +25,14 @@ describe('JalaliDate.parse', () => {
             { input: '\u200F۱۴۰۲/۰۶/۳۱', expected: { year: 1402, month: 6, day: 31 } },
             { input: '\u200F\u200E1402\u061C/6/31', expected: { year: 1402, month: 6, day: 31 } },
             { input: '1402-06-31', pattern: '  YYYY-MM-DD  ', expected: { year: 1402, month: 6, day: 31 } },
+            { input: '1402/06/31', pattern: '[jalali:YYYY/MM/DD]', expected: { year: 1402, month: 6, day: 31 } },
+            { input: '31 شهریور 1402', pattern: '[jalali:D MMMM YYYY]', expected: { year: 1402, month: 6, day: 31 } },
+            { input: '1402/06/31 برابر با 2023/09/22', pattern: 'YYYY/MM/DD برابر با [gregorian:YYYY/MM/DD]', expected: { year: 1402, month: 6, day: 31 } },
+            { input: '1402/06/31 برابر با 22 سپتامبر 2023', pattern: 'YYYY/MM/DD برابر با [gregorian:D MMMM YYYY]', expected: { year: 1402, month: 6, day: 31 } },
+            { input: '1402/06/31 - جمعه', pattern: '[jalali:YYYY/MM/DD] - [gregorian:DDDD]', expected: { year: 1402, month: 6, day: 31 } },
+            { input: '[1402/06/31]', pattern: '[[YYYY/MM/DD]]', expected: { year: 1402, month: 6, day: 31 } },
+            { input: '1402/06/31 [2023/09/22]', pattern: 'YYYY/MM/DD [gregorian:[[YYYY/MM/DD]]]', expected: { year: 1402, month: 6, day: 31 } },
+            { input: '[gregorian:YYYY/MM/DD] 1402/06/31', pattern: '"[gregorian:YYYY/MM/DD]" YYYY/MM/DD', expected: { year: 1402, month: 6, day: 31 } },
         ];
 
     for (const { input, pattern, expected } of cases) {
@@ -33,6 +41,29 @@ describe('JalaliDate.parse', () => {
             assert.deepEqual(result.toObject(), expected);
         });
     }
+
+    it('throws for malformed calendar scopes', () => {
+        assert.throws(
+            () => JalaliDate.parse('2023/09/22', '[gregorian:YYYY/MM/DD'),
+            /Unclosed calendar scope/
+        );
+        assert.throws(
+            () => JalaliDate.parse('1402/06/31', '[julian:YYYY/MM/DD]'),
+            /Unsupported calendar scope "julian"/
+        );
+        assert.throws(
+            () => JalaliDate.parse('1402/06/31', '[gregorian] YYYY/MM/DD'),
+            /Malformed calendar scope/
+        );
+        assert.throws(
+            () => JalaliDate.parse('1402/06/31', '[gregorian:[jalali:YYYY/MM/DD]]'),
+            /Nested calendar scopes are not supported/
+        );
+        assert.throws(
+            () => JalaliDate.parse('1402/06/31', 'YYYY/MM/DD]'),
+            /Unmatched closing bracket/
+        );
+    });
 
     it('parses every Persian month name', () => {
         const monthNames = [
@@ -87,6 +118,54 @@ describe('JalaliDate.parse', () => {
         }
     });
 
+    it('validates scoped Gregorian YY using the current Gregorian century reference', () => {
+        JalaliDate.setTestToday(new JalaliDate(1405, 1, 1));
+
+        try {
+            assert.deepEqual(
+                JalaliDate.parse('1402/6/31 برابر با 23/9/22', 'YYYY/M/D برابر با [gregorian:YY/M/D]').toObject(),
+                { year: 1402, month: 6, day: 31 }
+            );
+        } finally {
+            JalaliDate.setTestToday(null);
+        }
+    });
+
+    it('normalizes whitespace by default, unless preserveWhitespace is true', () => {
+        assert.deepEqual(
+            JalaliDate.parse('1402   /   6/31', 'YYYY / M/D').toObject(),
+            { year: 1402, month: 6, day: 31 }
+        );
+
+        assert.throws(
+            () => JalaliDate.parse('1402   /   6/31', 'YYYY / M/D', { preserveWhitespace: true }),
+            Error
+        );
+    });
+
+    it('strips BIDI controls by default, unless preserveBidiControls is true', () => {
+        assert.deepEqual(
+            JalaliDate.parse('‏1402/6/31').toObject(),
+            { year: 1402, month: 6, day: 31 }
+        );
+
+        assert.throws(
+            () => JalaliDate.parse('‏1402/6/31', 'YYYY/M/D', { preserveBidiControls: true }),
+            Error
+        );
+    });
+
+    it('skips day-of-week, quarter, and scoped Gregorian validation when skipValidation is true', () => {
+        assert.deepEqual(
+            JalaliDate.parse(
+                'شنبه بهار 1402/6/31 برابر با 2023/1/1',
+                'DDDD Q YYYY/M/D برابر با [gregorian:YYYY/M/D]',
+                { skipValidation: true }
+            ).toObject(),
+            { year: 1402, month: 6, day: 31 }
+        );
+    });
+
     it('expands YY to the nearest full year near the end of a Jalali century', () => {
         JalaliDate.setTestToday(new JalaliDate(1492, 1, 1));
         const cases: Array<[input: string, expectedYear: number]> = [
@@ -125,6 +204,9 @@ describe('JalaliDate.parse', () => {
             ['InvalidQuarter 1402/6/31', 'Q YYYY/M/D'],
             ['شنبه 1402/6/31', 'DDDD YYYY/M/D'],  // 1402/6/31 is Friday not Saturday
             ['بهار 1402/6/31', 'Q YYYY/M/D'],     // month 6 is in Tabestan not Bahar
+            ['1402/06/31 برابر با 2023/09/21', 'YYYY/MM/DD برابر با [gregorian:YYYY/MM/DD]'],
+            ['1402/06/31 برابر با 21 سپتامبر 2023', 'YYYY/MM/DD برابر با [gregorian:D MMMM YYYY]'],
+            ['1402/06/31 برابر با 2023/09/22', 'YYYY/MM/DD برابر با "[gregorian:"YYYY/MM/DD"]"'],
             ['100/1/1', 'YY/M/D'],
         ];
 

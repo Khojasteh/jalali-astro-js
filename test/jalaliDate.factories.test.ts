@@ -4,8 +4,8 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { DayOfWeek, JalaliDate, Occurrence } from '../src/jalaliDate.ts';
 import { gregorianToJDN } from '../src/julianDay.ts';
+import { DayOfWeek, JalaliDate, Occurrence } from '../src/jalaliDate.ts';
 
 describe('JalaliDate.fromDate', () => {
     it('uses Tehran civil date, not UTC civil date', () => {
