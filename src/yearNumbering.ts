@@ -99,23 +99,23 @@ export function gregorianToJalaliYear(gregorianYear: number): number {
 }
 
 /**
- * Expands a two-digit Jalali year to the nearest full year around a reference Jalali year.
+ * Expands a two-digit year to the nearest full year around a reference year.
  *
  * The same two digits of the absolute year number are checked in the previous,
  * current, and next century, then the year closest to `referenceYear` is returned.
  *
- * @param year          - Two-digit Jalali year in the range 0-99.
- * @param referenceYear - Full Jalali year used to choose the nearest century; cannot be 0.
- * @returns The corresponding full Jalali year.
+ * @param year          - Two-digit year in the range 0-99.
+ * @param referenceYear - Full year used to choose the nearest century; cannot be 0.
+ * @returns The corresponding full year.
  * @throws {RangeError} If `year` is not an integer in the range 0-99.
  * @throws {RangeError} If `referenceYear` is not a non-zero integer.
  */
-export function expandTwoDigitJalaliYear(year: number, referenceYear: number): number {
+export function expandTwoDigitYear(year: number, referenceYear: number): number {
     if (!Number.isInteger(year) || year < 0 || year > 99) {
-        throw new RangeError(`Two-digit Jalali year ${year} is out of valid range (0-99).`);
+        throw new RangeError(`Two-digit year ${year} is out of valid range (0-99).`);
     }
     if (!Number.isInteger(referenceYear) || referenceYear === 0) {
-        throw new RangeError('Reference Jalali year must be a non-zero integer.');
+        throw new RangeError('Reference year must be a non-zero integer.');
     }
 
     const referenceAstronomicalYear = toAstronomicalYear(referenceYear);

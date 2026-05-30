@@ -11,7 +11,7 @@ import {
     toCalendarYear,
     jalaliToGregorianYear,
     gregorianToJalaliYear,
-    expandTwoDigitJalaliYear
+    expandTwoDigitYear
 } from '../src/yearNumbering.ts';
 
 describe('toAstronomicalYear', () => {
@@ -144,42 +144,42 @@ describe('jalaliToGregorianYear / gregorianToJalaliYear round-trip', () => {
     }
 });
 
-describe('expandTwoDigitJalaliYear', () => {
-    it('chooses the nearest matching full year around a positive reference Jalali year', () => {
-        assert.equal(expandTwoDigitJalaliYear(0, 1410), 1400);
-        assert.equal(expandTwoDigitJalaliYear(5, 1410), 1405);
-        assert.equal(expandTwoDigitJalaliYear(50, 1410), 1450);
-        assert.equal(expandTwoDigitJalaliYear(95, 1410), 1395);
+describe('expandTwoDigitYear', () => {
+    it('chooses the nearest matching full year around a positive reference year', () => {
+        assert.equal(expandTwoDigitYear(0, 1410), 1400);
+        assert.equal(expandTwoDigitYear(5, 1410), 1405);
+        assert.equal(expandTwoDigitYear(50, 1410), 1450);
+        assert.equal(expandTwoDigitYear(95, 1410), 1395);
 
-        assert.equal(expandTwoDigitJalaliYear(0, 1590), 1600);
-        assert.equal(expandTwoDigitJalaliYear(5, 1590), 1605);
-        assert.equal(expandTwoDigitJalaliYear(50, 1590), 1550);
-        assert.equal(expandTwoDigitJalaliYear(95, 1590), 1595);
+        assert.equal(expandTwoDigitYear(0, 1590), 1600);
+        assert.equal(expandTwoDigitYear(5, 1590), 1605);
+        assert.equal(expandTwoDigitYear(50, 1590), 1550);
+        assert.equal(expandTwoDigitYear(95, 1590), 1595);
     });
 
-    it('chooses the nearest matching full year around a negative reference Jalali year', () => {
-        assert.equal(expandTwoDigitJalaliYear(0, -1410), -1400);
-        assert.equal(expandTwoDigitJalaliYear(5, -1410), -1405);
-        assert.equal(expandTwoDigitJalaliYear(50, -1410), -1450);
-        assert.equal(expandTwoDigitJalaliYear(95, -1410), -1395);
+    it('chooses the nearest matching full year around a negative reference year', () => {
+        assert.equal(expandTwoDigitYear(0, -1410), -1400);
+        assert.equal(expandTwoDigitYear(5, -1410), -1405);
+        assert.equal(expandTwoDigitYear(50, -1410), -1450);
+        assert.equal(expandTwoDigitYear(95, -1410), -1395);
 
-        assert.equal(expandTwoDigitJalaliYear(0, -1590), -1600);
-        assert.equal(expandTwoDigitJalaliYear(5, -1590), -1605);
-        assert.equal(expandTwoDigitJalaliYear(50, -1590), -1550);
-        assert.equal(expandTwoDigitJalaliYear(95, -1590), -1595);
+        assert.equal(expandTwoDigitYear(0, -1590), -1600);
+        assert.equal(expandTwoDigitYear(5, -1590), -1605);
+        assert.equal(expandTwoDigitYear(50, -1590), -1550);
+        assert.equal(expandTwoDigitYear(95, -1590), -1595);
     });
 
     it('never returns year zero near the calendar era boundary', () => {
-        assert.notEqual(expandTwoDigitJalaliYear(0, -1), 0);
-        assert.notEqual(expandTwoDigitJalaliYear(0, 1), 0);
+        assert.notEqual(expandTwoDigitYear(0, -1), 0);
+        assert.notEqual(expandTwoDigitYear(0, 1), 0);
     });
 
     it('rejects values outside the two-digit range', () => {
         for (const year of [-1, 100, 1405, 1.5, NaN]) {
             assert.throws(
-                () => expandTwoDigitJalaliYear(year, 1405),
+                () => expandTwoDigitYear(year, 1405),
                 RangeError,
-                `Expected expandTwoDigitJalaliYear(${year}, 1405) to throw`
+                `Expected expandTwoDigitYear(${year}, 1405) to throw`
             );
         }
     });
@@ -187,9 +187,9 @@ describe('expandTwoDigitJalaliYear', () => {
     it('rejects invalid reference years', () => {
         for (const referenceYear of [0, 1405.5, NaN]) {
             assert.throws(
-                () => expandTwoDigitJalaliYear(10, referenceYear),
+                () => expandTwoDigitYear(10, referenceYear),
                 RangeError,
-                `Expected expandTwoDigitJalaliYear(10, ${referenceYear}) to throw`
+                `Expected expandTwoDigitYear(10, ${referenceYear}) to throw`
             );
         }
     });
