@@ -2,8 +2,8 @@
  * Pattern parsing and compilation helpers for JalaliDate formatting and parsing.
  *
  * The pattern language supports ordinary Jalali tokens, scoped calendar blocks
- * such as `[jalali:YYYY/M/D]` and `[gregorian:YYYY-MM-DD]`, quoted literals,
- * literal square brackets written as `[[` and `]]`.
+ * such as `[jalali:YYYY/M/D]` and `[gregorian:YYYY-MM-DD]`, and quoted
+ * literals.
  *
  * This module is intentionally syntax-only: it understands pattern structure, but
  * it does not format values or perform calendar conversions.
@@ -144,8 +144,8 @@ function matchFormatTokenAt(pattern: string, index: number): FormatToken | undef
  * Reads a scoped calendar block starting at `index`.
  *
  * Supported forms are `[jalali:...]` and `[gregorian:...]`. Nested calendar
- * blocks are intentionally unsupported. Literal square brackets inside a block
- * can be written as `[[` and `]]`.
+ * blocks are intentionally unsupported. Square brackets inside quoted literals
+ * are treated as literal text.
  *
  * @param pattern The pattern string to scan.
  * @param index The index of the opening `[` for the calendar block.
@@ -173,13 +173,12 @@ function readCalendarBlockAt(
     for (let i = bodyStart; i < pattern.length; i++) {
         const char = pattern[i];
 
-        if (char === '[' && pattern[i + 1] === '[') {
-            i++;
-            continue;
-        }
-
-        if (char === ']' && pattern[i + 1] === ']') {
-            i++;
+        if (char === '"' || char === "'") {
+            const closingQuoteIndex = pattern.indexOf(char, i + 1);
+            if (closingQuoteIndex === -1) {
+                throw new Error(`Unclosed quoted literal starting at index ${i}.`);
+            }
+            i = closingQuoteIndex;
             continue;
         }
 
@@ -221,18 +220,6 @@ function appendPatternSegments(
     for (let i = 0; i < pattern.length;) {
         const char = pattern[i]!;
 
-        if (char === '[' && pattern[i + 1] === '[') {
-            literal += '[';
-            i += 2;
-            continue;
-        }
-
-        if (char === ']' && pattern[i + 1] === ']') {
-            literal += ']';
-            i += 2;
-            continue;
-        }
-
         if (char === '[') {
             const block = readCalendarBlockAt(pattern, i);
             flushLiteral();
@@ -242,7 +229,7 @@ function appendPatternSegments(
         }
 
         if (char === ']') {
-            throw new Error(`Unmatched closing bracket in pattern at index ${i}. Use ]] for a literal ].`);
+            throw new Error(`Unmatched closing bracket in pattern at index ${i}. Use quoted literals for a literal ].`);
         }
 
         if (char === '"' || char === "'") {
@@ -275,8 +262,8 @@ function appendPatternSegments(
  * Parses a format/parse pattern into reusable segments.
  *
  * Tokens outside a scoped block use the Jalali calendar. Tokens inside
- * `[jalali:...]` or `[gregorian:...]` use that block's calendar. Literal square
- * brackets can be written as `[[` and `]]`.
+ * `[jalali:...]` or `[gregorian:...]` use that block's calendar. Square
+ * brackets can be included using quoted literals.
  *
  * @param pattern The pattern string to parse.
  * @returns An array of pattern segments representing the structure of `pattern`.
