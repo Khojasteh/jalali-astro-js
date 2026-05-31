@@ -760,7 +760,6 @@ export class JalaliDate {
      *   `preserveWhitespace` to require exact whitespace matching.
      * - Quoted text in single or double quotes is treated as literal text after the selected
      *   normalization rules have been applied.
-     * - Literal square brackets can be written as `[[` and `]]`.
      * - Jalali year/month/day tokens outside scoped blocks, and inside `[jalali:...]`
      *   blocks, construct the returned date.
      * - Day-of-week names, quarter names, and tokens inside `[gregorian:...]` blocks do not
@@ -1556,7 +1555,6 @@ export class JalaliDate {
      *
      * Formatting behavior:
      * - Quoted text in single or double quotes is output verbatim, without the quotes.
-     * - Double square brackets are treated as literal single brackets.
      * - Number fields are formatted using Persian-Indic digits.
      *
      * @example
@@ -1570,7 +1568,7 @@ export class JalaliDate {
      * date.format('[jalali:DDDD، D MMMM YYYY] برابر با [gregorian:D MMMM YYYY]');
      * // "شنبه، ۱۵ فروردین ۱۴۰۵ برابر با ۴ آوریل ۲۰۲۶"
      *
-     * date.format('DDDD [[YYYY/MM/DD]]', { rlm: 'auto' });
+     * date.format('DDDD "["YYYY/MM/DD"]"', { rlm: 'auto' });
      * // "شنبه [۱۴۰۵/۰۱/۱۵]"
      * ```
      *

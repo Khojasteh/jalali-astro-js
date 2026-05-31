@@ -57,8 +57,8 @@ describe('parsePattern', () => {
         ]);
     });
 
-    it('treats doubled square brackets as literal brackets outside scoped blocks', () => {
-        assertSegments('[[YYYY/MM/DD]]', [
+    it('treats quoted square brackets as literal brackets outside scoped blocks', () => {
+        assertSegments('"["YYYY/MM/DD"]"', [
             { kind: 'literal', text: '[' },
             { kind: 'token', calendar: 'jalali', token: 'YYYY' },
             { kind: 'literal', text: '/' },
@@ -69,8 +69,8 @@ describe('parsePattern', () => {
         ]);
     });
 
-    it('treats doubled square brackets as literal brackets inside scoped blocks', () => {
-        assertSegments('[gregorian:[[YYYY/MM/DD]]]', [
+    it('treats quoted square brackets as literal brackets inside scoped blocks', () => {
+        assertSegments('[gregorian:"["YYYY/MM/DD"]"]', [
             { kind: 'literal', text: '[' },
             { kind: 'token', calendar: 'gregorian', token: 'YYYY' },
             { kind: 'literal', text: '/' },
@@ -236,8 +236,8 @@ describe('compilePattern', () => {
         assert.match('۱۴۰۲/۶/۵', compiled.regex);
     });
 
-    it('compiles doubled square brackets as literal brackets', () => {
-        const compiled = compilePattern('[[YYYY/MM/DD]]');
+    it('compiles quoted square brackets as literal brackets', () => {
+        const compiled = compilePattern('"["YYYY/MM/DD"]"');
 
         assert.deepEqual(compiled.captureGroups, [
             { calendar: 'jalali', type: 'year', token: 'YYYY' },

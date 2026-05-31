@@ -33,8 +33,8 @@ describe('JalaliDate.format', () => {
         ['[gregorian:DDDD]', dayName],
         ['[gregorian:Q]', 'Q'],
         ['YYYY/MM/DD برابر با [gregorian:YYYY/MM/DD]', '۱۴۰۲/۰۶/۰۵ برابر با ۲۰۲۳/۰۸/۲۷'],
-        ['[[YYYY/MM/DD]]', '[۱۴۰۲/۰۶/۰۵]'],
-        ['[gregorian:[[YYYY/MM/DD]]]', '[۲۰۲۳/۰۸/۲۷]'],
+        ['"["YYYY/MM/DD"]"', '[۱۴۰۲/۰۶/۰۵]'],
+        ['[gregorian:"["YYYY/MM/DD"]"]', '[۲۰۲۳/۰۸/۲۷]'],
         ['"[gregorian:YYYY/MM/DD]" YYYY/MM/DD', '[gregorian:YYYY/MM/DD] ۱۴۰۲/۰۶/۰۵'],
     ];
 

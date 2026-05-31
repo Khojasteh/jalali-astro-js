@@ -30,8 +30,8 @@ describe('JalaliDate.parse', () => {
             { input: '1402/06/31 برابر با 2023/09/22', pattern: 'YYYY/MM/DD برابر با [gregorian:YYYY/MM/DD]', expected: { year: 1402, month: 6, day: 31 } },
             { input: '1402/06/31 برابر با 22 سپتامبر 2023', pattern: 'YYYY/MM/DD برابر با [gregorian:D MMMM YYYY]', expected: { year: 1402, month: 6, day: 31 } },
             { input: '1402/06/31 - جمعه', pattern: '[jalali:YYYY/MM/DD] - [gregorian:DDDD]', expected: { year: 1402, month: 6, day: 31 } },
-            { input: '[1402/06/31]', pattern: '[[YYYY/MM/DD]]', expected: { year: 1402, month: 6, day: 31 } },
-            { input: '1402/06/31 [2023/09/22]', pattern: 'YYYY/MM/DD [gregorian:[[YYYY/MM/DD]]]', expected: { year: 1402, month: 6, day: 31 } },
+            { input: '[1402/06/31]', pattern: '"["YYYY/MM/DD"]"', expected: { year: 1402, month: 6, day: 31 } },
+            { input: '1402/06/31 [2023/09/22]', pattern: 'YYYY/MM/DD [gregorian:"["YYYY/MM/DD"]"]', expected: { year: 1402, month: 6, day: 31 } },
             { input: '[gregorian:YYYY/MM/DD] 1402/06/31', pattern: '"[gregorian:YYYY/MM/DD]" YYYY/MM/DD', expected: { year: 1402, month: 6, day: 31 } },
         ];
 

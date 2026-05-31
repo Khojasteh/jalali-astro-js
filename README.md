@@ -361,8 +361,6 @@ Scoped calendar blocks are defined with square brackets and a calendar name pref
 | `YYYY/MM/DD`             | Implied Jalali calendar block (default)  |
 | `[jalali:YYYY/MM/DD]`    | Explicit Jalali calendar block           |
 | `[gregorian:YYYY/MM/DD]` | Gregorian calendar block                 |
-| `[[`                     | Literal `[`                              |
-| `]]`                     | Literal `]`                              |
 | `'text'` or `"text"`     | Quoted literal text                      |
 
 The parser follows these rules:
@@ -372,7 +370,6 @@ The parser follows these rules:
 - By default, leading/trailing whitespace is ignored and consecutive whitespace is collapsed to a single space in both the input string and the pattern. If the `preserveWhitespace` option is enabled, whitespace is preserved exactly as-is instead.
 - Quoted text in single or double quotes is matched literally after the selected normalization rules have been applied.
 - Day-of-week names, quarter names, and scoped Gregorian components are validated by default against the parsed date. If the `skipValidation` option is enabled, they are not validated, but they must still match the expected pattern shape.
-- Literal square brackets must be written as `[[` and `]]` if they are outside of a quoted literal.
 
 ##### Parse options
 
@@ -402,7 +399,7 @@ const mixed = JalaliDate.parse(
 );
 console.log(mixed.toString()); // "1404/01/01"
 
-const withLiteralBrackets = JalaliDate.parse('تاریخ: [۱۴۰۴/۰۱/۰۱]', '"تاریخ:" [[YYYY/MM/DD]]');
+const withLiteralBrackets = JalaliDate.parse('تاریخ: [۱۴۰۴/۰۱/۰۱]', '"تاریخ:" "["YYYY/MM/DD"]"');
 console.log(withLiteralBrackets.toString()); // "1404/01/01"
 
 // Default parsing is forgiving about repeated whitespace.
@@ -694,8 +691,6 @@ Scoped calendar blocks are defined with square brackets and a calendar name pref
 | `YYYY/MM/DD`             | Implied Jalali calendar block (default) |
 | `[jalali:YYYY/MM/DD]`    | Explicit Jalali calendar block          |
 | `[gregorian:YYYY/MM/DD]` | Gregorian calendar block                |
-| `[[`                     | Literal `[`                             |
-| `]]`                     | Literal `]`                             |
 | `'text'` or `"text"`     | Quoted literal text                     |
 
 The formatter follows these rules:
@@ -705,7 +700,6 @@ The formatter follows these rules:
 - Tokens inside `[jalali:...]` blocks are formatted using the Jalali date.
 - Tokens inside `[gregorian:...]` blocks are formatted using the corresponding Gregorian date.
 - Quoted text in single or double quotes is output literally, without the quote characters.
-- Literal square brackets must be written as `[[` and `]]` if they are outside of a quoted literal.
 
 ##### Format options
 
@@ -748,7 +742,7 @@ console.log(date.format('YYYY/MM/DD برابر با [gregorian:YYYY/MM/DD] می�
 console.log(date.format('D MMMM YYYY برابر با [gregorian:D MMMM YYYY]'));
 // "۱ فروردین ۱۴۰۴ برابر با ۲۱ مارس ۲۰۲۵"
 
-console.log(date.format('تاریخ: [[YYYY/MM/DD]]'));
+console.log(date.format('تاریخ: "["YYYY/MM/DD"]"'));
 // "تاریخ: [۱۴۰۴/۰۱/۰۱]"
 
 console.log(date.format('"تاریخ:" YYYY/MM/DD'));
